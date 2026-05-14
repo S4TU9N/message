@@ -22,16 +22,15 @@ const passwordInput = document.getElementById("passwordInput")
 const messageInput = document.getElementById("messageInput")
 
 let currentRoom = null
+let username = ""
+let color = ""
 
 joinBtn.onclick = async () => {
-  const username = nameInput.value.trim()
-  const color = colorInput.value
+  username = nameInput.value.trim()
+  color = colorInput.value
   const room = roomInput.value.trim()
 
   if (!username || !room) return
-
-  localStorage.setItem("chat_name", username)
-  localStorage.setItem("chat_color", color)
 
   currentRoom = room
 
@@ -46,13 +45,13 @@ sendBtn.onclick = async () => {
   const content = messageInput.value.trim()
   if (!content) return
 
-  const { data, error } = await supabaseClient
+  const { error } = await supabaseClient
     .from("messages")
     .insert({
       room: currentRoom,
-      username: localStorage.getItem("chat_name"),
-      color: localStorage.getItem("chat_color"),
-      content: content
+      username,
+      color,
+      content
     })
 
   if (error) {
