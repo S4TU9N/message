@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://kbpcgdsfqosgeoaanghf.supabase.co"
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujg.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujgle_BO_TCPEqe9YYw6BZpBmyZA_Hs2qFDE6"
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujg"
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
@@ -24,7 +24,6 @@ const messageInput = document.getElementById("messageInput")
 let currentRoom = null
 
 joinBtn.onclick = async () => {
-
   const username = nameInput.value.trim()
   const color = colorInput.value
   const room = roomInput.value.trim()
@@ -45,7 +44,6 @@ joinBtn.onclick = async () => {
 
 sendBtn.onclick = async () => {
   const content = messageInput.value.trim()
-
   if (!content) return
 
   const { data, error } = await supabaseClient
@@ -58,7 +56,12 @@ sendBtn.onclick = async () => {
     })
 
   if (error) {
-    console.log("Insert error:", error)
+    addMessage({
+      username: "SYSTEM",
+      color: "red",
+      content: "Send failed: " + error.message
+    })
+    return
   }
 
   messageInput.value = ""
@@ -74,12 +77,11 @@ async function loadMessages() {
     .order("id", { ascending: true })
 
   if (error) {
-    console.log("Select error:", error)
-    return
-  }
-
-  if (!data) {
-    console.log("No data returned")
+    addMessage({
+      username: "SYSTEM",
+      color: "red",
+      content: "Load failed: " + error.message
+    })
     return
   }
 
@@ -87,25 +89,20 @@ async function loadMessages() {
 }
 
 function addMessage(msg) {
-
   const div = document.createElement("div")
-
   div.className = "message"
 
   div.innerHTML = `
     <span style="color:${msg.color}">
       ${msg.username}
-    </span>:
-    ${msg.content}
+    </span>: ${msg.content}
   `
 
   messagesDiv.appendChild(div)
-
   messagesDiv.scrollTop = messagesDiv.scrollHeight
 }
 
 function subscribeToMessages() {
-
   supabaseClient
     .channel("chat-room")
     .on(
@@ -115,8 +112,7 @@ function subscribeToMessages() {
         schema: "public",
         table: "messages"
       },
-      payload => {
-
+      (payload) => {
         if (payload.new.room === currentRoom) {
           addMessage(payload.new)
         }
