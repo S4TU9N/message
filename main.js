@@ -136,3 +136,27 @@ function subscribeToMessages() {
     )
     .subscribe()
 }
+
+nameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    joinBtn.click()
+  }
+})
+
+roomInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    joinBtn.click()
+  }
+})
+
+passwordInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    joinBtn.click()
+  }
+})
+
+messageInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    sendBtn.click()
+  }
+})
