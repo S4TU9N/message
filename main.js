@@ -17,7 +17,17 @@ const messagesDiv = document.getElementById("messages")
 const nameInput = document.getElementById("nameInput")
 const colorInput = document.getElementById("colorInput")
 const roomInput = document.getElementById("roomInput")
+const params = new URLSearchParams(window.location.search)
+const roomFromURL = params.get("room")
+
+if (roomFromURL) {
+  roomInput.value = roomFromURL
+}
+
 const passwordInput = document.getElementById("passwordInput")
+const savedName = localStorage.getItem("username")
+const savedColor = localStorage.getItem("color")
+
 
 const messageInput = document.getElementById("messageInput")
 
@@ -25,14 +35,21 @@ let currentRoom = null
 let username = ""
 let color = ""
 
+if (savedName) nameInput.value = savedName
+if (savedColor) colorInput.value = savedColor
+
 joinBtn.onclick = async () => {
   username = nameInput.value.trim()
   color = colorInput.value
+  localStorage.setItem("username", username)
+  localStorage.setItem("color", color)
   const room = roomInput.value.trim()
 
   if (!username || !room) return
 
   currentRoom = room
+  const newURL = `${window.location.pathname}?room=${encodeURIComponent(room)}`
+  window.history.replaceState({}, "", newURL)
 
   setupDiv.classList.add("hidden")
   chatDiv.classList.remove("hidden")
