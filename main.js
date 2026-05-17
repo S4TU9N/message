@@ -1,5 +1,5 @@
-const SUPABASE_URL = "https://kbpcgdsfqosgeoaanghf.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujg";
+const SUPABASE_URL = "YOUR_URL";
+const SUPABASE_ANON_KEY = "YOUR_KEY";
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
@@ -88,7 +88,7 @@ async function joinRoom() {
   setupDiv.classList.add("hidden");
   chatDiv.classList.remove("hidden");
 
-  loadMessages();
+  await loadMessages();
   subscribeMessages();
 }
 
@@ -159,7 +159,7 @@ async function loadMessages() {
     return;
   }
 
-  data.forEach(msg => addMessage(msg, false)); // false = no sound
+  data.forEach(msg => addMessage(msg, false));
 
   initialLoadDone = true;
 }
@@ -185,7 +185,9 @@ function subscribeMessages() {
 
         const msgTime = new Date(msg.created_at).getTime();
 
-        if (Date.now() - msgTime > 15 * 60 * 1000) return;
+        if (Date.now() - msgTime > 15 * 60 * 1000) {
+          return;
+        }
 
         addMessage(msg, initialLoadDone);
       }
@@ -197,42 +199,75 @@ function subscribeMessages() {
 /* TOKENIZE MESSAGE */
 /* -------------------- */
 
+const urlRegex = /(https?:\/\/[^\s]+)/g;
+
 function tokenizeMessage(text) {
   const tokens = [];
 
   let i = 0;
 
   while (i < text.length) {
-    const urlMatch = text.slice(i).match(urlRegex);
-    const mentionMatch = text.slice(i).match(/^@([a-zA-Z0-9_]+)/);
 
-    // URL found at current position
+    const urlMatch = text
+      .slice(i)
+      .match(urlRegex);
+
+    const mentionMatch = text
+      .slice(i)
+      .match(/^@([a-zA-Z0-9_]+)/);
+
+    // URL
     if (urlMatch && urlMatch.index === 0) {
       const url = urlMatch[0];
-      tokens.push({ type: "url", value: url });
+
+      tokens.push({
+        type: "url",
+        value: url
+      });
+
       i += url.length;
       continue;
     }
 
-    // mention found at current position
+    // Mention
     if (mentionMatch) {
       const mention = mentionMatch[1];
-      tokens.push({ type: "mention", value: mention });
+
+      tokens.push({
+        type: "mention",
+        value: mention
+      });
+
       i += mention.length + 1;
       continue;
     }
 
-    // fallback: accumulate normal text
+    // Normal text
     let nextSpecial = text.length;
 
-    const nextUrl = text.slice(i).search(urlRegex);
-    const nextMention = text.slice(i).search(/@/);
+    const nextUrl =
+      text.slice(i).search(urlRegex);
 
-    if (nextUrl !== -1) nextSpecial = Math.min(nextSpecial, i + nextUrl);
-    if (nextMention !== -1) nextSpecial = Math.min(nextSpecial, i + nextMention);
+    const nextMention =
+      text.slice(i).search(/@/);
 
-    const chunk = text.slice(i, nextSpecial);
-    tokens.push({ type: "text", value: chunk });
+    if (nextUrl !== -1) {
+      nextSpecial =
+        Math.min(nextSpecial, i + nextUrl);
+    }
+
+    if (nextMention !== -1) {
+      nextSpecial =
+        Math.min(nextSpecial, i + nextMention);
+    }
+
+    const chunk =
+      text.slice(i, nextSpecial);
+
+    tokens.push({
+      type: "text",
+      value: chunk
+    });
 
     i = nextSpecial;
   }
@@ -241,71 +276,236 @@ function tokenizeMessage(text) {
 }
 
 /* -------------------- */
+/* EMBED HELPERS */
+/* -------------------- */
+
+function isYouTube(url) {
+  return (
+    url.includes("youtube.com/watch?v=") ||
+    url.includes("youtu.be/")
+  );
+}
+
+function getYouTubeID(url) {
+  try {
+    const u = new URL(url);
+
+    if (u.hostname.includes("youtu.be")) {
+      return u.pathname.slice(1);
+    }
+
+    return u.searchParams.get("v");
+
+  } catch {
+    return null;
+  }
+}
+
+function createYouTubeEmbed(url) {
+
+  const id = getYouTubeID(url);
+
+  if (!id) {
+    return document.createTextNode(url);
+  }
+
+  const iframe = document.createElement("iframe");
+
+  iframe.src =
+    `https://www.youtube.com/embed/${id}`;
+
+  iframe.width = "320";
+  iframe.height = "180";
+
+  iframe.allowFullscreen = true;
+
+  iframe.style.border = "none";
+  iframe.style.borderRadius = "10px";
+  iframe.style.marginTop = "6px";
+  iframe.style.display = "block";
+
+  return iframe;
+}
+
+function isTenor(url) {
+  return url.includes("tenor.com");
+}
+
+function createTenorEmbed(url) {
+
+  const iframe = document.createElement("iframe");
+
+  iframe.src = url;
+
+  iframe.width = "320";
+  iframe.height = "320";
+
+  iframe.style.border = "none";
+  iframe.style.borderRadius = "10px";
+  iframe.style.marginTop = "6px";
+  iframe.style.display = "block";
+
+  return iframe;
+}
+
+function isImage(url) {
+  return /\.(png|jpg|jpeg|gif|webp)$/i.test(url);
+}
+
+function createImageEmbed(url) {
+
+  const img = document.createElement("img");
+
+  img.src = url;
+
+  img.style.maxWidth = "300px";
+  img.style.borderRadius = "10px";
+  img.style.marginTop = "6px";
+  img.style.display = "block";
+
+  return img;
+}
+
+/* -------------------- */
 /* ADD MESSAGE */
 /* -------------------- */
 
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/* Detect URLs */
-const urlRegex = /(https?:\/\/[^\s]+)/g;
-
-/* Detect mentions like @user */
-const mentionRegex = /@([a-zA-Z0-9_]+)/g;
-
 function addMessage(msg, playSound = true) {
-  const container = document.createElement("div");
 
-  // --- header (username + time) ---
+  const container =
+    document.createElement("div");
+
+  container.style.marginBottom = "10px";
+
+  // Header
+
   const time = new Date(msg.created_at);
-  const hh = time.getHours().toString().padStart(2, "0");
-  const mm = time.getMinutes().toString().padStart(2, "0");
 
-  const name = document.createElement("span");
+  const hh = time
+    .getHours()
+    .toString()
+    .padStart(2, "0");
+
+  const mm = time
+    .getMinutes()
+    .toString()
+    .padStart(2, "0");
+
+  const name =
+    document.createElement("span");
+
   name.style.color = msg.color;
   name.textContent = msg.username;
 
-  const timeSpan = document.createElement("span");
+  const timeSpan =
+    document.createElement("span");
+
   timeSpan.style.color = "gray";
-  timeSpan.textContent = ` [${hh}:${mm}]: `;
+  timeSpan.textContent =
+    ` [${hh}:${mm}]: `;
 
   container.appendChild(name);
   container.appendChild(timeSpan);
 
-  // --- message body (safe parsing) ---
-  const body = document.createElement("span");
+  // Body
 
-  const parts = tokenizeMessage(msg.content);
+  const body =
+    document.createElement("span");
+
+  const parts =
+    tokenizeMessage(msg.content);
 
   for (const part of parts) {
+
+    // TEXT
     if (part.type === "text") {
-      body.appendChild(document.createTextNode(part.value));
+
+      body.appendChild(
+        document.createTextNode(part.value)
+      );
     }
 
+    // URL
     if (part.type === "url") {
-      const a = document.createElement("a");
+
+      // YouTube
+      if (isYouTube(part.value)) {
+
+        body.appendChild(
+          createYouTubeEmbed(part.value)
+        );
+
+        continue;
+      }
+
+      // Tenor
+      if (isTenor(part.value)) {
+
+        body.appendChild(
+          createTenorEmbed(part.value)
+        );
+
+        continue;
+      }
+
+      // Images
+      if (isImage(part.value)) {
+
+        body.appendChild(
+          createImageEmbed(part.value)
+        );
+
+        continue;
+      }
+
+      // Normal link fallback
+
+      const a =
+        document.createElement("a");
+
       a.href = part.value;
       a.textContent = part.value;
+
       a.target = "_blank";
       a.rel = "noopener noreferrer";
+
+      a.style.color = "#6ea8ff";
+
       body.appendChild(a);
     }
 
+    // Mention
     if (part.type === "mention") {
-      const m = document.createElement("span");
-      m.textContent = "@" + part.value;
+
+      const m =
+        document.createElement("span");
+
+      m.textContent =
+        "@" + part.value;
+
       m.style.fontWeight = "bold";
       m.style.color = "#644dff";
+
       body.appendChild(m);
     }
   }
 
   container.appendChild(body);
-  messagesDiv.appendChild(container);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-  if (playSound) {
+  messagesDiv.appendChild(container);
+
+  messagesDiv.scrollTop =
+    messagesDiv.scrollHeight;
+
+  // Notification sound
+
+  if (
+    playSound &&
+    document.visibilityState !== "visible"
+  ) {
+
+    messageSound.currentTime = 0;
+
     messageSound.play().catch(() => {});
   }
 }
