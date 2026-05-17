@@ -20,9 +20,13 @@ const messagesDiv = document.getElementById("messages");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
 
+const messageSound = new Audio("ping.mp3");
+
 let username = "";
 let room = "";
 let userColor = "";
+
+let initialLoadDone = false;
 
 /* -------------------- */
 /* AUTO LOAD SAVED INFO */
@@ -155,7 +159,9 @@ async function loadMessages() {
     return;
   }
 
-  data.forEach(addMessage);
+  data.forEach(msg => addMessage(msg, false)); // false = no sound
+
+  initialLoadDone = true;
 }
 
 /* -------------------- */
@@ -179,18 +185,14 @@ function subscribeMessages() {
 
         const msgTime = new Date(msg.created_at).getTime();
 
-        if (
-          Date.now() - msgTime >
-          15 * 60 * 1000
-        ) {
-          return;
-        }
+        if (Date.now() - msgTime > 15 * 60 * 1000) return;
 
-        addMessage(msg);
+        addMessage(msg, initialLoadDone);
       }
     )
     .subscribe();
 }
+
 /* -------------------- */
 /* TOKENIZE MESSAGE */
 /* -------------------- */
@@ -252,7 +254,7 @@ const urlRegex = /(https?:\/\/[^\s]+)/g;
 /* Detect mentions like @user */
 const mentionRegex = /@([a-zA-Z0-9_]+)/g;
 
-function addMessage(msg) {
+function addMessage(msg, playSound = true) {
   const container = document.createElement("div");
 
   // --- header (username + time) ---
@@ -302,4 +304,8 @@ function addMessage(msg) {
   container.appendChild(body);
   messagesDiv.appendChild(container);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+  if (playSound) {
+    messageSound.play().catch(() => {});
+  }
 }
