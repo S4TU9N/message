@@ -1,12 +1,16 @@
-body {
+html, body {
   margin: 0;
-  font-family: Arial;
+  height: 100%;
   background: #111;
   color: white;
+  font-family: Arial, sans-serif;
 }
 
-#setup,
-#chat {
+body {
+  overflow: hidden;
+}
+
+#setup {
   padding: 20px;
 }
 
@@ -20,16 +24,11 @@ button {
   margin: 5px;
   border: none;
   border-radius: 8px;
+  font-size: 16px;
 }
 
 button {
   cursor: pointer;
-}
-
-html, body {
-  margin: 0;
-  height: 100%;
-  font-family: sans-serif;
 }
 
 #chat {
@@ -47,29 +46,23 @@ html, body {
 
 #inputBar {
   display: flex;
-  width: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-  background: #222;
   gap: 8px;
+  padding: 10px;
+  background: #222;
   border-top: 1px solid #333;
+  box-sizing: border-box;
 }
 
 #messageInput {
   flex: 1;
   padding: 12px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
+  background: #333;
+  color: white;
   outline: none;
 }
 
 #sendBtn {
   padding: 12px 18px;
-  border: none;
-  border-radius: 10px;
   background: #4a6cff;
   color: white;
-  font-size: 16px;
-  cursor: pointer;
 }
