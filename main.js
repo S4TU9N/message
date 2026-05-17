@@ -390,97 +390,78 @@ function isYouTube(url) {
 }
 
 function getYouTubeID(url) {
-
   try {
-
     const u = new URL(url);
 
-    // youtu.be/abc
-    if (
-      u.hostname.includes(
-        "youtu.be"
-      )
-    ) {
+    let id = null;
 
-      return u.pathname
-        .split("/")[1];
+    // youtu.be/ID
+    if (u.hostname.includes("youtu.be")) {
+      id = u.pathname.split("/")[1];
     }
 
-    // youtube shorts
-    if (
-      u.pathname.includes(
-        "/shorts/"
-      )
-    ) {
-
-      return u.pathname
-        .split("/shorts/")[1]
-        ?.split("/")[0];
+    // youtube.com/watch?v=ID
+    else if (u.searchParams.get("v")) {
+      id = u.searchParams.get("v");
     }
 
-    // watch?v=
-    if (
-      u.searchParams.get("v")
-    ) {
-
-      return u.searchParams.get("v");
+    // youtube.com/shorts/ID
+    else if (u.pathname.includes("/shorts/")) {
+      id = u.pathname.split("/shorts/")[1];
     }
 
-    // embed/
-    if (
-      u.pathname.includes(
-        "/embed/"
-      )
-    ) {
-
-      return u.pathname
-        .split("/embed/")[1]
-        ?.split("/")[0];
+    // youtube.com/embed/ID
+    else if (u.pathname.includes("/embed/")) {
+      id = u.pathname.split("/embed/")[1];
     }
 
-    return null;
+    if (!id) return null;
+
+    // remove extra URL junk
+    id = id.split("?")[0];
+    id = id.split("&")[0];
+    id = id.split("/")[0];
+
+    // valid YouTube IDs are 11 chars
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(id)) {
+      return null;
+    }
+
+    return id;
 
   } catch {
-
     return null;
   }
 }
 
 function createYouTubeEmbed(url) {
 
-  const id =
-    getYouTubeID(url);
+  const id = getYouTubeID(url);
 
   if (!id) {
-
     return createLink(url);
   }
 
   const iframe =
-    document.createElement(
-      "iframe"
-    );
-
-  iframe.src =
-    `https://www.youtube.com/embed/${encodeURIComponent(id)}`;
+    document.createElement("iframe");
 
   iframe.width = "320";
   iframe.height = "180";
 
+  iframe.src =
+    `https://www.youtube.com/embed/${id}`;
+
   iframe.allow =
-    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
 
   iframe.allowFullscreen = true;
 
   iframe.loading = "lazy";
 
-  iframe.referrerPolicy =
-    "strict-origin-when-cross-origin";
-
   iframe.style.border = "none";
   iframe.style.borderRadius = "10px";
-  iframe.style.marginTop = "6px";
   iframe.style.display = "block";
+  iframe.style.marginTop = "6px";
 
   return iframe;
 }
