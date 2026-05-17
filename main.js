@@ -432,6 +432,38 @@ function getYouTubeID(url) {
   } catch {
     return null;
   }
+}function getYouTubeID(url) {
+  try {
+    const u = new URL(url);
+
+    let id = null;
+
+    if (u.hostname.includes("youtu.be")) {
+      id = u.pathname.slice(1);
+    }
+
+    else if (u.pathname.includes("/shorts/")) {
+      id = u.pathname.split("/shorts/")[1];
+    }
+
+    else if (u.pathname.includes("/embed/")) {
+      id = u.pathname.split("/embed/")[1];
+    }
+
+    else {
+      id = u.searchParams.get("v");
+    }
+
+    if (!id) return null;
+
+    // only strip noise, do NOT validate length
+    id = id.split("?")[0].split("&")[0].split("/")[0];
+
+    return id;
+
+  } catch {
+    return null;
+  }
 }
 
 function createYouTubeEmbed(url) {
@@ -449,7 +481,7 @@ function createYouTubeEmbed(url) {
   iframe.height = "180";
 
   iframe.src =
-    `https://www.youtube.com/embed/${id}`;
+    `https://www.youtube.com/embed/${id}?rel=0&origin=${location.origin}`;
 
   iframe.allow =
     "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
