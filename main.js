@@ -1,126 +1,162 @@
-const SUPABASE_URL = "https://kbpcgdsfqosgeoaanghf.supabase.co"
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujg"
+const SUPABASE_URL = "YOUR_URL";
+const SUPABASE_ANON_KEY = "YOUR_KEY";
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
-)
+);
 
-const joinBtn = document.getElementById("joinBtn")
-const sendBtn = document.getElementById("sendBtn")
+const setupDiv = document.getElementById("setup");
+const chatDiv = document.getElementById("chat");
 
-const setupDiv = document.getElementById("setup")
-const chatDiv = document.getElementById("chat")
+const nameInput = document.getElementById("nameInput");
+const roomInput = document.getElementById("roomInput");
+const passwordInput = document.getElementById("passwordInput");
 
-const messagesDiv = document.getElementById("messages")
+const joinBtn = document.getElementById("joinBtn");
 
-const nameInput = document.getElementById("nameInput")
-const colorInput = document.getElementById("colorInput")
-const roomInput = document.getElementById("roomInput")
-const params = new URLSearchParams(window.location.search)
-const roomFromURL = params.get("room")
+const messagesDiv = document.getElementById("messages");
 
-if (roomFromURL) {
-  roomInput.value = roomFromURL
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
+
+let username = "";
+let room = "";
+let userColor = "";
+
+/* -------------------- */
+/* AUTO LOAD SAVED INFO */
+/* -------------------- */
+
+nameInput.value = localStorage.getItem("chat_name") || "";
+
+const savedColor = localStorage.getItem("chat_color");
+
+if (savedColor) {
+  userColor = savedColor;
+} else {
+  userColor =
+    "#" + Math.floor(Math.random() * 16777215).toString(16);
+
+  localStorage.setItem("chat_color", userColor);
 }
 
-const passwordInput = document.getElementById("passwordInput")
-const savedName = localStorage.getItem("username")
-const savedColor = localStorage.getItem("color")
+/* -------------------- */
+/* ROOM FROM URL */
+/* -------------------- */
 
+const params = new URLSearchParams(window.location.search);
 
-const messageInput = document.getElementById("messageInput")
-
-let currentRoom = null
-let username = ""
-let color = ""
-
-if (savedName) nameInput.value = savedName
-if (savedColor) colorInput.value = savedColor
-
-joinBtn.onclick = async () => {
-  username = nameInput.value.trim()
-  color = colorInput.value
-  localStorage.setItem("username", username)
-  localStorage.setItem("color", color)
-  const room = roomInput.value.trim()
-
-  if (!username || !room) return
-
-  currentRoom = room
-  const newURL = `${window.location.pathname}?room=${encodeURIComponent(room)}`
-  window.history.replaceState({}, "", newURL)
-
-  setupDiv.classList.add("hidden")
-  chatDiv.classList.remove("hidden")
-
-  loadMessages()
-  subscribeToMessages()
+if (params.get("room")) {
+  roomInput.value = params.get("room");
 }
 
-sendBtn.onclick = async () => {
-  const content = messageInput.value.trim()
-  if (!content) return
+/* -------------------- */
+/* JOIN ROOM */
+/* -------------------- */
 
-  const { error } = await supabaseClient
-    .from("messages")
-    .insert({
-      room: currentRoom,
-      username,
-      color,
-      content
-    })
+joinBtn.addEventListener("click", joinRoom);
 
-  if (error) {
-    addMessage({
-      username: "SYSTEM",
-      color: "red",
-      content: "Send failed: " + error.message
-    })
-    return
+async function joinRoom() {
+  username = nameInput.value.trim();
+  room = roomInput.value.trim();
+
+  if (!username || !room) return;
+
+  localStorage.setItem("chat_name", username);
+
+  const newUrl =
+    window.location.origin +
+    window.location.pathname +
+    "?room=" +
+    encodeURIComponent(room);
+
+  history.replaceState({}, "", newUrl);
+
+  setupDiv.classList.add("hidden");
+  chatDiv.classList.remove("hidden");
+
+  loadMessages();
+  subscribeMessages();
+}
+
+/* -------------------- */
+/* ENTER KEY SUPPORT */
+/* -------------------- */
+
+nameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    joinRoom();
   }
+});
 
-  messageInput.value = ""
+roomInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    joinRoom();
+  }
+});
+
+messageInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    sendMessage();
+  }
+});
+
+/* -------------------- */
+/* SEND MESSAGE */
+/* -------------------- */
+
+sendBtn.addEventListener("click", sendMessage);
+
+async function sendMessage() {
+  const content = messageInput.value.trim();
+
+  if (!content) return;
+
+  await supabaseClient.from("messages").insert([
+    {
+      room: room,
+      username: username,
+      content: content,
+      color: userColor
+    }
+  ]);
+
+  messageInput.value = "";
 }
+
+/* -------------------- */
+/* LOAD MESSAGES */
+/* -------------------- */
 
 async function loadMessages() {
-  messagesDiv.innerHTML = ""
+  messagesDiv.innerHTML = "";
+
+  const fifteenMinutesAgo =
+    new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
   const { data, error } = await supabaseClient
     .from("messages")
     .select("*")
-    .eq("room", currentRoom)
-    .order("id", { ascending: true })
+    .eq("room", room)
+    .gt("created_at", fifteenMinutesAgo)
+    .order("created_at", { ascending: true });
 
   if (error) {
-    addMessage({
-      username: "SYSTEM",
-      color: "red",
-      content: "Load failed: " + error.message
-    })
-    return
+    console.error(error);
+    return;
   }
 
-  data.forEach(addMessage)
+  data.forEach(addMessage);
 }
 
-function addMessage(msg) {
-  const div = document.createElement("div")
-  div.className = "message"
+/* -------------------- */
+/* REALTIME */
+/* -------------------- */
 
-  div.innerHTML = `
-    <span style="color:${msg.color}">
-      ${msg.username}
-    </span>: ${msg.content}
-  `
-
-  messagesDiv.appendChild(div)
-  messagesDiv.scrollTop = messagesDiv.scrollHeight
-}
-
-function subscribeToMessages() {
+function subscribeMessages() {
   supabaseClient
-    .channel("chat-room")
+    .channel("chat-room-" + room)
     .on(
       "postgres_changes",
       {
@@ -129,34 +165,54 @@ function subscribeToMessages() {
         table: "messages"
       },
       (payload) => {
-        if (payload.new.room === currentRoom) {
-          addMessage(payload.new)
+        const msg = payload.new;
+
+        if (msg.room !== room) return;
+
+        const msgTime = new Date(msg.created_at).getTime();
+
+        if (
+          Date.now() - msgTime >
+          15 * 60 * 1000
+        ) {
+          return;
         }
+
+        addMessage(msg);
       }
     )
-    .subscribe()
+    .subscribe();
 }
 
-nameInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    joinBtn.click()
-  }
-})
+/* -------------------- */
+/* ADD MESSAGE */
+/* -------------------- */
 
-roomInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    joinBtn.click()
-  }
-})
+function addMessage(msg) {
+  const div = document.createElement("div");
 
-passwordInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    joinBtn.click()
-  }
-})
+  const time = new Date(msg.created_at);
 
-messageInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    sendBtn.click()
-  }
-})
+  const hours = time.getHours()
+    .toString()
+    .padStart(2, "0");
+
+  const minutes = time.getMinutes()
+    .toString()
+    .padStart(2, "0");
+
+  const timeString = `${hours}:${minutes}`;
+
+  div.innerHTML = `
+    <span style="color:${msg.color}">
+      ${msg.username}
+    </span>
+    [${timeString}]:
+    ${msg.content}
+  `;
+
+  messagesDiv.appendChild(div);
+
+  messagesDiv.scrollTop =
+    messagesDiv.scrollHeight;
+}
