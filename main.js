@@ -36,10 +36,15 @@ if (savedColor) {
   userColor = savedColor;
 } else {
   userColor =
-    "#" + Math.floor(Math.random() * 16777215).toString(16);
+    "#" +
+    Math.floor(Math.random() * 16777215)
+      .toString(16)
+      .padStart(6, "0");
 
   localStorage.setItem("chat_color", userColor);
 }
+
+colorInput.value = userColor;
 
 /* -------------------- */
 /* ROOM FROM URL */
@@ -60,6 +65,9 @@ joinBtn.addEventListener("click", joinRoom);
 async function joinRoom() {
   username = nameInput.value.trim();
   room = roomInput.value.trim();
+  userColor = colorInput.value;
+
+  localStorage.setItem("chat_color", userColor);
 
   if (!username || !room) return;
 
