@@ -191,36 +191,115 @@ function subscribeMessages() {
     )
     .subscribe();
 }
+/* -------------------- */
+/* TOKENIZE MESSAGE */
+/* -------------------- */
+
+function tokenizeMessage(text) {
+  const tokens = [];
+
+  let i = 0;
+
+  while (i < text.length) {
+    const urlMatch = text.slice(i).match(urlRegex);
+    const mentionMatch = text.slice(i).match(/^@([a-zA-Z0-9_]+)/);
+
+    // URL found at current position
+    if (urlMatch && urlMatch.index === 0) {
+      const url = urlMatch[0];
+      tokens.push({ type: "url", value: url });
+      i += url.length;
+      continue;
+    }
+
+    // mention found at current position
+    if (mentionMatch) {
+      const mention = mentionMatch[1];
+      tokens.push({ type: "mention", value: mention });
+      i += mention.length + 1;
+      continue;
+    }
+
+    // fallback: accumulate normal text
+    let nextSpecial = text.length;
+
+    const nextUrl = text.slice(i).search(urlRegex);
+    const nextMention = text.slice(i).search(/@/);
+
+    if (nextUrl !== -1) nextSpecial = Math.min(nextSpecial, i + nextUrl);
+    if (nextMention !== -1) nextSpecial = Math.min(nextSpecial, i + nextMention);
+
+    const chunk = text.slice(i, nextSpecial);
+    tokens.push({ type: "text", value: chunk });
+
+    i = nextSpecial;
+  }
+
+  return tokens;
+}
 
 /* -------------------- */
 /* ADD MESSAGE */
 /* -------------------- */
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/* Detect URLs */
+const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+/* Detect mentions like @user */
+const mentionRegex = /@([a-zA-Z0-9_]+)/g;
+
 function addMessage(msg) {
-  const div = document.createElement("div");
+  const container = document.createElement("div");
 
+  // --- header (username + time) ---
   const time = new Date(msg.created_at);
+  const hh = time.getHours().toString().padStart(2, "0");
+  const mm = time.getMinutes().toString().padStart(2, "0");
 
-  const hours = time.getHours()
-    .toString()
-    .padStart(2, "0");
+  const name = document.createElement("span");
+  name.style.color = msg.color;
+  name.textContent = msg.username;
 
-  const minutes = time.getMinutes()
-    .toString()
-    .padStart(2, "0");
+  const timeSpan = document.createElement("span");
+  timeSpan.style.color = "gray";
+  timeSpan.textContent = ` [${hh}:${mm}]: `;
 
-  const timeString = `${hours}:${minutes}`;
+  container.appendChild(name);
+  container.appendChild(timeSpan);
 
-  div.innerHTML = `
-    <span style="color:${msg.color}">
-      ${msg.username}
-    </span>
-    <span style="color:gray"> [${timeString}]</span>:
-    ${msg.content}
-  `;
+  // --- message body (safe parsing) ---
+  const body = document.createElement("span");
 
-  messagesDiv.appendChild(div);
+  const parts = tokenizeMessage(msg.content);
 
-  messagesDiv.scrollTop =
-    messagesDiv.scrollHeight;
+  for (const part of parts) {
+    if (part.type === "text") {
+      body.appendChild(document.createTextNode(part.value));
+    }
+
+    if (part.type === "url") {
+      const a = document.createElement("a");
+      a.href = part.value;
+      a.textContent = part.value;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      body.appendChild(a);
+    }
+
+    if (part.type === "mention") {
+      const m = document.createElement("span");
+      m.textContent = "@" + part.value;
+      m.style.fontWeight = "bold";
+      m.style.color = "#644dff";
+      body.appendChild(m);
+    }
+  }
+
+  container.appendChild(body);
+  messagesDiv.appendChild(container);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
