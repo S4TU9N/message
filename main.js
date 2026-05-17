@@ -37,6 +37,7 @@ nameInput.value = localStorage.getItem("chat_name") || "";
 
 const savedColor = localStorage.getItem("chat_color");
 
+
 if (savedColor) {
   userColor = savedColor;
 } else {
@@ -306,6 +307,8 @@ function createYouTubeEmbed(url) {
   iframe.style.borderRadius = "10px";
   iframe.style.marginTop = "6px";
   iframe.style.display = "block";
+
+  iframe.referrerPolicy = "strict-origin-when-cross-origin";
 
   return iframe;
 }
