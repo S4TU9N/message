@@ -207,7 +207,7 @@ function addMessage(msg) {
     <span style="color:${msg.color}">
       ${msg.username}
     </span>
-    [${timeString}]:
+    <span style="color:gray"> [${timeString}]</span>:
     ${msg.content}
   `;
 
