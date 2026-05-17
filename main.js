@@ -1,5 +1,5 @@
-const SUPABASE_URL = "YOUR_URL";
-const SUPABASE_ANON_KEY = "YOUR_KEY";
+const SUPABASE_URL = "https://kbpcgdsfqosgeoaanghf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujg";
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
@@ -12,6 +12,7 @@ const chatDiv = document.getElementById("chat");
 const nameInput = document.getElementById("nameInput");
 const roomInput = document.getElementById("roomInput");
 const passwordInput = document.getElementById("passwordInput");
+const colorInput =  document.getElementById("colorInput");
 
 const joinBtn = document.getElementById("joinBtn");
 

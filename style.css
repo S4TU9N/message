@@ -36,6 +36,14 @@ button {
   display: flex;
   flex-direction: column;
 }
+#colorInput {
+  padding: 0;
+  width: 50px;
+  height: 42px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
 
 #messages {
   flex: 1;
