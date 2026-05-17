@@ -1,10 +1,17 @@
-const SUPABASE_URL = "https://kbpcgdsfqosgeoaanghf.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujg";
+const SUPABASE_URL =
+  "https://kbpcgdsfqosgeoaanghf.supabase.co";
+
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujg";
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
+
+/* -------------------- */
+/* ELEMENTS */
+/* -------------------- */
 
 const setupDiv = document.getElementById("setup");
 const chatDiv = document.getElementById("chat");
@@ -12,42 +19,58 @@ const chatDiv = document.getElementById("chat");
 const nameInput = document.getElementById("nameInput");
 const roomInput = document.getElementById("roomInput");
 const passwordInput = document.getElementById("passwordInput");
-const colorInput =  document.getElementById("colorInput");
+const colorInput = document.getElementById("colorInput");
 
 const joinBtn = document.getElementById("joinBtn");
 
 const messagesDiv = document.getElementById("messages");
 
-const messageInput = document.getElementById("messageInput");
-const sendBtn = document.getElementById("sendBtn");
+const messageInput =
+  document.getElementById("messageInput");
 
-const messageSound = new Audio("ping.mp3");
+const sendBtn =
+  document.getElementById("sendBtn");
+
+const messageSound =
+  new Audio("ping.mp3");
+
+/* -------------------- */
+/* STATE */
+/* -------------------- */
 
 let username = "";
 let room = "";
 let userColor = "";
 
 let initialLoadDone = false;
+let activeChannel = null;
 
 /* -------------------- */
-/* AUTO LOAD SAVED INFO */
+/* LOAD SAVED INFO */
 /* -------------------- */
 
-nameInput.value = localStorage.getItem("chat_name") || "";
+nameInput.value =
+  localStorage.getItem("chat_name") || "";
 
-const savedColor = localStorage.getItem("chat_color");
-
+const savedColor =
+  localStorage.getItem("chat_color");
 
 if (savedColor) {
+
   userColor = savedColor;
+
 } else {
+
   userColor =
     "#" +
     Math.floor(Math.random() * 16777215)
       .toString(16)
       .padStart(6, "0");
 
-  localStorage.setItem("chat_color", userColor);
+  localStorage.setItem(
+    "chat_color",
+    userColor
+  );
 }
 
 colorInput.value = userColor;
@@ -56,28 +79,48 @@ colorInput.value = userColor;
 /* ROOM FROM URL */
 /* -------------------- */
 
-const params = new URLSearchParams(window.location.search);
+const params =
+  new URLSearchParams(window.location.search);
 
 if (params.get("room")) {
-  roomInput.value = params.get("room");
+
+  roomInput.value =
+    params.get("room");
 }
 
 /* -------------------- */
 /* JOIN ROOM */
 /* -------------------- */
 
-joinBtn.addEventListener("click", joinRoom);
+joinBtn.addEventListener(
+  "click",
+  joinRoom
+);
 
 async function joinRoom() {
-  username = nameInput.value.trim();
-  room = roomInput.value.trim();
-  userColor = colorInput.value;
 
-  localStorage.setItem("chat_color", userColor);
+  username =
+    nameInput.value.trim();
 
-  if (!username || !room) return;
+  room =
+    roomInput.value.trim();
 
-  localStorage.setItem("chat_name", username);
+  userColor =
+    colorInput.value;
+
+  if (!username || !room) {
+    return;
+  }
+
+  localStorage.setItem(
+    "chat_name",
+    username
+  );
+
+  localStorage.setItem(
+    "chat_color",
+    userColor
+  );
 
   const newUrl =
     window.location.origin +
@@ -85,12 +128,18 @@ async function joinRoom() {
     "?room=" +
     encodeURIComponent(room);
 
-  history.replaceState({}, "", newUrl);
+  history.replaceState(
+    {},
+    "",
+    newUrl
+  );
 
   setupDiv.classList.add("hidden");
+
   chatDiv.classList.remove("hidden");
 
   await loadMessages();
+
   subscribeMessages();
 }
 
@@ -98,43 +147,57 @@ async function joinRoom() {
 /* ENTER KEY SUPPORT */
 /* -------------------- */
 
-nameInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    joinRoom();
-  }
+[nameInput, roomInput].forEach(input => {
+
+  input.addEventListener(
+    "keydown",
+    (e) => {
+
+      if (e.key === "Enter") {
+        joinRoom();
+      }
+    }
+  );
 });
 
-roomInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    joinRoom();
-  }
-});
+messageInput.addEventListener(
+  "keydown",
+  (e) => {
 
-messageInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    sendMessage();
+    if (e.key === "Enter") {
+      sendMessage();
+    }
   }
-});
+);
 
 /* -------------------- */
 /* SEND MESSAGE */
 /* -------------------- */
 
-sendBtn.addEventListener("click", sendMessage);
+sendBtn.addEventListener(
+  "click",
+  sendMessage
+);
 
 async function sendMessage() {
-  const content = messageInput.value.trim();
 
-  if (!content) return;
+  const content =
+    messageInput.value.trim();
 
-  await supabaseClient.from("messages").insert([
-    {
-      room: room,
-      username: username,
-      content: content,
-      color: userColor
-    }
-  ]);
+  if (!content) {
+    return;
+  }
+
+  await supabaseClient
+    .from("messages")
+    .insert([
+      {
+        room,
+        username,
+        content,
+        color: userColor
+      }
+    ]);
 
   messageInput.value = "";
 }
@@ -144,24 +207,36 @@ async function sendMessage() {
 /* -------------------- */
 
 async function loadMessages() {
+
   messagesDiv.innerHTML = "";
 
-  const fifteenMinutesAgo =
-    new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const cutoff =
+    new Date(
+      Date.now() - 15 * 60 * 1000
+    ).toISOString();
 
-  const { data, error } = await supabaseClient
-    .from("messages")
-    .select("*")
-    .eq("room", room)
-    .gt("created_at", fifteenMinutesAgo)
-    .order("created_at", { ascending: true });
+  const { data, error } =
+    await supabaseClient
+      .from("messages")
+      .select("*")
+      .eq("room", room)
+      .gt("created_at", cutoff)
+      .order(
+        "created_at",
+        { ascending: true }
+      );
 
   if (error) {
+
     console.error(error);
+
     return;
   }
 
-  data.forEach(msg => addMessage(msg, false));
+  data.forEach(msg => {
+
+    addMessage(msg, false);
+  });
 
   initialLoadDone = true;
 }
@@ -171,37 +246,56 @@ async function loadMessages() {
 /* -------------------- */
 
 function subscribeMessages() {
-  supabaseClient
-    .channel("chat-room-" + room)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "messages"
-      },
-      (payload) => {
-        const msg = payload.new;
 
-        if (msg.room !== room) return;
+  if (activeChannel) {
 
-        const msgTime = new Date(msg.created_at).getTime();
+    supabaseClient.removeChannel(
+      activeChannel
+    );
+  }
 
-        if (Date.now() - msgTime > 15 * 60 * 1000) {
-          return;
+  activeChannel =
+    supabaseClient
+      .channel("chat-" + room)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages"
+        },
+        (payload) => {
+
+          const msg = payload.new;
+
+          if (msg.room !== room) {
+            return;
+          }
+
+          const msgTime =
+            new Date(
+              msg.created_at
+            ).getTime();
+
+          if (
+            Date.now() - msgTime >
+            15 * 60 * 1000
+          ) {
+            return;
+          }
+
+          addMessage(
+            msg,
+            initialLoadDone
+          );
         }
-
-        addMessage(msg, initialLoadDone);
-      }
-    )
-    .subscribe();
+      )
+      .subscribe();
 }
 
 /* -------------------- */
-/* TOKENIZE MESSAGE */
+/* TOKENIZER */
 /* -------------------- */
-
-const urlRegex = /(https?:\/\/[^\s]+)/;
 
 function tokenizeMessage(text) {
 
@@ -216,26 +310,25 @@ function tokenizeMessage(text) {
 
     const index = match.index;
 
-    // normal text before token
     if (index > lastIndex) {
 
       tokens.push({
         type: "text",
-        value: text.slice(lastIndex, index)
+        value: text.slice(
+          lastIndex,
+          index
+        )
       });
     }
 
-    // URL
     if (match[1]) {
 
       tokens.push({
         type: "url",
         value: match[1]
       });
-    }
 
-    // Mention
-    else if (match[2]) {
+    } else if (match[2]) {
 
       tokens.push({
         type: "mention",
@@ -247,7 +340,6 @@ function tokenizeMessage(text) {
       index + match[0].length;
   }
 
-  // remaining text
   if (lastIndex < text.length) {
 
     tokens.push({
@@ -260,71 +352,169 @@ function tokenizeMessage(text) {
 }
 
 /* -------------------- */
-/* EMBED HELPERS */
+/* URL HELPERS */
+/* -------------------- */
+
+function safeURL(url) {
+
+  try {
+
+    const parsed =
+      new URL(url);
+
+    if (
+      parsed.protocol === "http:" ||
+      parsed.protocol === "https:"
+    ) {
+      return parsed;
+    }
+
+    return null;
+
+  } catch {
+
+    return null;
+  }
+}
+
+/* -------------------- */
+/* YOUTUBE */
 /* -------------------- */
 
 function isYouTube(url) {
+
   return (
-    url.includes("youtube.com/watch?v=") ||
-    url.includes("youtu.be/")
+    url.includes("youtube.com") ||
+    url.includes("youtu.be")
   );
 }
 
 function getYouTubeID(url) {
+
   try {
+
     const u = new URL(url);
 
-    if (u.hostname.includes("youtu.be")) {
-      return u.pathname.slice(1);
+    // youtu.be/abc
+    if (
+      u.hostname.includes(
+        "youtu.be"
+      )
+    ) {
+
+      return u.pathname
+        .split("/")[1];
     }
 
-    return u.searchParams.get("v");
+    // youtube shorts
+    if (
+      u.pathname.includes(
+        "/shorts/"
+      )
+    ) {
+
+      return u.pathname
+        .split("/shorts/")[1]
+        ?.split("/")[0];
+    }
+
+    // watch?v=
+    if (
+      u.searchParams.get("v")
+    ) {
+
+      return u.searchParams.get("v");
+    }
+
+    // embed/
+    if (
+      u.pathname.includes(
+        "/embed/"
+      )
+    ) {
+
+      return u.pathname
+        .split("/embed/")[1]
+        ?.split("/")[0];
+    }
+
+    return null;
 
   } catch {
+
     return null;
   }
 }
 
 function createYouTubeEmbed(url) {
 
-  const id = getYouTubeID(url);
+  const id =
+    getYouTubeID(url);
 
   if (!id) {
-    return document.createTextNode(url);
+
+    return createLink(url);
   }
 
-  const iframe = document.createElement("iframe");
+  const iframe =
+    document.createElement(
+      "iframe"
+    );
 
   iframe.src =
-    `https://www.youtube.com/embed/${id}`;
+    `https://www.youtube.com/embed/${encodeURIComponent(id)}`;
 
   iframe.width = "320";
   iframe.height = "180";
 
+  iframe.allow =
+    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+
   iframe.allowFullscreen = true;
+
+  iframe.loading = "lazy";
+
+  iframe.referrerPolicy =
+    "strict-origin-when-cross-origin";
 
   iframe.style.border = "none";
   iframe.style.borderRadius = "10px";
   iframe.style.marginTop = "6px";
   iframe.style.display = "block";
 
-  iframe.referrerPolicy = "strict-origin-when-cross-origin";
-
   return iframe;
 }
 
+/* -------------------- */
+/* TENOR */
+/* -------------------- */
+
 function isTenor(url) {
+
   return url.includes("tenor.com");
 }
 
 function createTenorEmbed(url) {
 
-  const iframe = document.createElement("iframe");
+  const safe =
+    safeURL(url);
 
-  iframe.src = url;
+  if (!safe) {
+
+    return createLink(url);
+  }
+
+  const iframe =
+    document.createElement(
+      "iframe"
+    );
+
+  iframe.src = safe.href;
 
   iframe.width = "320";
   iframe.height = "320";
+
+  iframe.loading = "lazy";
 
   iframe.style.border = "none";
   iframe.style.borderRadius = "10px";
@@ -334,15 +524,26 @@ function createTenorEmbed(url) {
   return iframe;
 }
 
+/* -------------------- */
+/* IMAGE */
+/* -------------------- */
+
 function isImage(url) {
-  return /\.(png|jpg|jpeg|gif|webp)$/i.test(url);
+
+  return /\.(png|jpg|jpeg|gif|webp)$/i
+    .test(url);
 }
 
 function createImageEmbed(url) {
 
-  const img = document.createElement("img");
+  const img =
+    document.createElement(
+      "img"
+    );
 
   img.src = url;
+
+  img.loading = "lazy";
 
   img.style.maxWidth = "300px";
   img.style.borderRadius = "10px";
@@ -353,145 +554,234 @@ function createImageEmbed(url) {
 }
 
 /* -------------------- */
+/* NORMAL LINK */
+/* -------------------- */
+
+function createLink(url) {
+
+  const a =
+    document.createElement("a");
+
+  a.href = url;
+
+  a.textContent = url;
+
+  a.target = "_blank";
+
+  a.rel =
+    "noopener noreferrer";
+
+  a.style.color =
+    "#6ea8ff";
+
+  return a;
+}
+
+/* -------------------- */
 /* ADD MESSAGE */
 /* -------------------- */
 
-function addMessage(msg, playSound = true) {
+function addMessage(
+  msg,
+  playSound = true
+) {
 
   const container =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
-  container.style.marginBottom = "10px";
+  container.style.marginBottom =
+    "10px";
 
-  // Header
+  /* HEADER */
 
-  const time = new Date(msg.created_at);
+  const time =
+    new Date(msg.created_at);
 
-  const hh = time
-    .getHours()
-    .toString()
-    .padStart(2, "0");
+  const hh =
+    time
+      .getHours()
+      .toString()
+      .padStart(2, "0");
 
-  const mm = time
-    .getMinutes()
-    .toString()
-    .padStart(2, "0");
+  const mm =
+    time
+      .getMinutes()
+      .toString()
+      .padStart(2, "0");
 
   const name =
-    document.createElement("span");
+    document.createElement(
+      "span"
+    );
 
-  name.style.color = msg.color;
-  name.textContent = msg.username;
+  name.style.color =
+    msg.color;
+
+  name.textContent =
+    msg.username;
 
   const timeSpan =
-    document.createElement("span");
+    document.createElement(
+      "span"
+    );
 
-  timeSpan.style.color = "gray";
+  timeSpan.style.color =
+    "gray";
+
   timeSpan.textContent =
     ` [${hh}:${mm}]: `;
 
   container.appendChild(name);
-  container.appendChild(timeSpan);
 
-  // Body
+  container.appendChild(
+    timeSpan
+  );
+
+  /* BODY */
 
   const body =
-    document.createElement("span");
+    document.createElement(
+      "span"
+    );
 
   const parts =
-    tokenizeMessage(msg.content);
+    tokenizeMessage(
+      msg.content
+    );
 
   for (const part of parts) {
 
     // TEXT
-    if (part.type === "text") {
+    if (
+      part.type === "text"
+    ) {
 
       body.appendChild(
-        document.createTextNode(part.value)
+        document.createTextNode(
+          part.value
+        )
       );
     }
 
     // URL
-    if (part.type === "url") {
+    else if (
+      part.type === "url"
+    ) {
+
+      const safe =
+        safeURL(
+          part.value
+        );
+
+      if (!safe) {
+        continue;
+      }
 
       // YouTube
-      if (isYouTube(part.value)) {
+      if (
+        isYouTube(
+          safe.href
+        )
+      ) {
 
         body.appendChild(
-          createYouTubeEmbed(part.value)
+          createYouTubeEmbed(
+            safe.href
+          )
         );
 
         continue;
       }
 
       // Tenor
-      if (isTenor(part.value)) {
+      if (
+        isTenor(
+          safe.href
+        )
+      ) {
 
         body.appendChild(
-          createTenorEmbed(part.value)
+          createTenorEmbed(
+            safe.href
+          )
         );
 
         continue;
       }
 
       // Images
-      if (isImage(part.value)) {
+      if (
+        isImage(
+          safe.href
+        )
+      ) {
 
         body.appendChild(
-          createImageEmbed(part.value)
+          createImageEmbed(
+            safe.href
+          )
         );
 
         continue;
       }
 
-      // Normal link fallback
-
-      const a =
-        document.createElement("a");
-
-      a.href = part.value;
-      a.textContent = part.value;
-
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-
-      a.style.color = "#6ea8ff";
-
-      body.appendChild(a);
+      // Normal links
+      body.appendChild(
+        createLink(
+          safe.href
+        )
+      );
     }
 
-    // Mention
-    if (part.type === "mention") {
+    // MENTION
+    else if (
+      part.type ===
+      "mention"
+    ) {
 
-      const m =
-        document.createElement("span");
+      const mention =
+        document.createElement(
+          "span"
+        );
 
-      m.textContent =
+      mention.textContent =
         "@" + part.value;
 
-      m.style.fontWeight = "bold";
-      m.style.color = "#644dff";
+      mention.style.fontWeight =
+        "bold";
 
-      body.appendChild(m);
+      mention.style.color =
+        "#644dff";
+
+      body.appendChild(
+        mention
+      );
     }
   }
 
   container.appendChild(body);
 
-  messagesDiv.appendChild(container);
+  messagesDiv.appendChild(
+    container
+  );
 
   messagesDiv.scrollTop =
     messagesDiv.scrollHeight;
 
-  // Notification sound
+  /* SOUND */
 
   if (
     playSound &&
-    document.visibilityState !== "visible"
+    document.visibilityState !==
+      "visible"
   ) {
 
     messageSound.currentTime = 0;
 
-    messageSound.play().catch(() => {});
+    messageSound
+      .play()
+      .catch(() => {});
   }
 }
