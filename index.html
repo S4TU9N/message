@@ -1,17 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <title>Chat Test V.1.5</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
 <body>
 
   <div id="setup">
     <h1>Chat Test V.1.2</h1>
 
-    <input id="nameInput" placeholder="Name" maxlength="20">
+    <input
+      id="nameInput"
+      type="text"
+      placeholder="Name"
+      maxlength="20"
+    >
 
-    <input type="color" id="colorInput" value="#00ffcc">
+    <input
+      id="colorInput"
+      type="color"
+      value="#00ffcc"
+    >
 
-    <input id="roomInput" placeholder="Room Name">
+    <input
+      id="roomInput"
+      type="text"
+      placeholder="Room Name"
+    >
 
-    <input id="passwordInput" type="password" placeholder="Room Password">
+    <input
+      id="passwordInput"
+      type="password"
+      placeholder="Room Password"
+    >
 
-    <button id="joinBtn">Join Room</button>
+    <button id="joinBtn">
+      Join Room
+    </button>
   </div>
 
   <div id="chat" class="hidden">
@@ -19,8 +51,17 @@
     <div id="messages"></div>
 
     <div id="inputBar">
-      <input type="text" id="messageInput" placeholder="Message...">
-      <button id="sendBtn">Send</button>
+
+      <input
+        id="messageInput"
+        type="text"
+        placeholder="Message..."
+      >
+
+      <button id="sendBtn">
+        Send
+      </button>
+
     </div>
 
   </div>
@@ -30,3 +71,4 @@
   <script src="main.js"></script>
 
 </body>
+</html>
