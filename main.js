@@ -200,77 +200,59 @@ function subscribeMessages() {
 /* TOKENIZE MESSAGE */
 /* -------------------- */
 
-const urlRegex = /(https?:\/\/[^\s]+)/g;
+const urlRegex = /(https?:\/\/[^\s]+)/;
 
 function tokenizeMessage(text) {
+
   const tokens = [];
 
-  let i = 0;
+  const regex =
+    /(https?:\/\/[^\s]+)|@([a-zA-Z0-9_]+)/g;
 
-  while (i < text.length) {
+  let lastIndex = 0;
 
-    const urlMatch = text
-      .slice(i)
-      .match(urlRegex);
+  for (const match of text.matchAll(regex)) {
 
-    const mentionMatch = text
-      .slice(i)
-      .match(/^@([a-zA-Z0-9_]+)/);
+    const index = match.index;
+
+    // normal text before token
+    if (index > lastIndex) {
+
+      tokens.push({
+        type: "text",
+        value: text.slice(lastIndex, index)
+      });
+    }
 
     // URL
-    if (urlMatch && urlMatch.index === 0) {
-      const url = urlMatch[0];
+    if (match[1]) {
 
       tokens.push({
         type: "url",
-        value: url
+        value: match[1]
       });
-
-      i += url.length;
-      continue;
     }
 
     // Mention
-    if (mentionMatch) {
-      const mention = mentionMatch[1];
+    else if (match[2]) {
 
       tokens.push({
         type: "mention",
-        value: mention
+        value: match[2]
       });
-
-      i += mention.length + 1;
-      continue;
     }
 
-    // Normal text
-    let nextSpecial = text.length;
+    lastIndex =
+      index + match[0].length;
+  }
 
-    const nextUrl =
-      text.slice(i).search(urlRegex);
-
-    const nextMention =
-      text.slice(i).search(/@/);
-
-    if (nextUrl !== -1) {
-      nextSpecial =
-        Math.min(nextSpecial, i + nextUrl);
-    }
-
-    if (nextMention !== -1) {
-      nextSpecial =
-        Math.min(nextSpecial, i + nextMention);
-    }
-
-    const chunk =
-      text.slice(i, nextSpecial);
+  // remaining text
+  if (lastIndex < text.length) {
 
     tokens.push({
       type: "text",
-      value: chunk
+      value: text.slice(lastIndex)
     });
-
-    i = nextSpecial;
   }
 
   return tokens;
