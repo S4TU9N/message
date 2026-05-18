@@ -432,7 +432,8 @@ function getYouTubeID(url) {
   } catch {
     return null;
   }
-}function getYouTubeID(url) {
+}
+function getYouTubeID(url) {
   try {
     const u = new URL(url);
 
@@ -471,29 +472,31 @@ function createYouTubeEmbed(url) {
   const id = getYouTubeID(url);
 
   if (!id) {
-    return createLink(url);
+    return document.createTextNode(url);
   }
 
-  const iframe =
-    document.createElement("iframe");
+  const iframe = document.createElement("iframe");
+
+  iframe.src =
+    `https://www.youtube.com/embed/${id}`;
 
   iframe.width = "320";
   iframe.height = "180";
 
-  iframe.src =
-    `https://www.youtube.com/embed/${id}?rel=0&origin=${location.origin}`;
+  iframe.allowFullscreen = true;
 
   iframe.allow =
     "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-
-  iframe.allowFullscreen = true;
 
   iframe.loading = "lazy";
 
   iframe.style.border = "none";
   iframe.style.borderRadius = "10px";
-  iframe.style.display = "block";
   iframe.style.marginTop = "6px";
+  iframe.style.display = "block";
+
+  iframe.referrerPolicy =
+    "strict-origin-when-cross-origin";
 
   return iframe;
 }
@@ -504,37 +507,72 @@ function createYouTubeEmbed(url) {
 
 function isTenor(url) {
 
-  return url.includes("tenor.com");
+  return (
+    url.includes("tenor.com/view/")
+  );
 }
 
 function createTenorEmbed(url) {
 
-  const safe =
-    safeURL(url);
+  try {
 
-  if (!safe) {
+    const u =
+      new URL(url);
+
+    const match =
+      u.pathname.match(
+        /-(\d+)$/
+      );
+
+    if (!match) {
+
+      return createLink(url);
+    }
+
+    const gifId =
+      match[1];
+
+    const iframe =
+      document.createElement(
+        "iframe"
+      );
+
+    iframe.src =
+      `https://tenor.com/embed/${gifId}`;
+
+    iframe.width = "320";
+
+    iframe.height = "320";
+
+    iframe.loading =
+      "lazy";
+
+    iframe.style.border =
+      "none";
+
+    iframe.style.borderRadius =
+      "10px";
+
+    iframe.style.marginTop =
+      "6px";
+
+    iframe.style.display =
+      "block";
+
+    iframe.allowFullscreen =
+      true;
+
+    return iframe;
+
+  } catch (err) {
+
+    console.error(
+      "Tenor embed failed:",
+      err
+    );
 
     return createLink(url);
   }
-
-  const iframe =
-    document.createElement(
-      "iframe"
-    );
-
-  iframe.src = safe.href;
-
-  iframe.width = "320";
-  iframe.height = "320";
-
-  iframe.loading = "lazy";
-
-  iframe.style.border = "none";
-  iframe.style.borderRadius = "10px";
-  iframe.style.marginTop = "6px";
-  iframe.style.display = "block";
-
-  return iframe;
 }
 
 /* -------------------- */
@@ -599,202 +637,270 @@ function addMessage(
   playSound = true
 ) {
 
-  const container =
-    document.createElement(
-      "div"
+  try {
+
+    const container =
+      document.createElement(
+        "div"
+      );
+
+    container.style.marginBottom =
+      "10px";
+
+    /* HEADER */
+
+    const time =
+      new Date(msg.created_at);
+
+    const hh =
+      time
+        .getHours()
+        .toString()
+        .padStart(2, "0");
+
+    const mm =
+      time
+        .getMinutes()
+        .toString()
+        .padStart(2, "0");
+
+    const name =
+      document.createElement(
+        "span"
+      );
+
+    name.style.color =
+      msg.color;
+
+    name.textContent =
+      msg.username;
+
+    const timeSpan =
+      document.createElement(
+        "span"
+      );
+
+    timeSpan.style.color =
+      "gray";
+
+    timeSpan.textContent =
+      ` [${hh}:${mm}]: `;
+
+    container.appendChild(name);
+
+    container.appendChild(
+      timeSpan
     );
 
-  container.style.marginBottom =
-    "10px";
+    /* BODY */
 
-  /* HEADER */
+    const body =
+      document.createElement(
+        "span"
+      );
 
-  const time =
-    new Date(msg.created_at);
+    const parts =
+      tokenizeMessage(
+        msg.content
+      );
 
-  const hh =
-    time
-      .getHours()
-      .toString()
-      .padStart(2, "0");
+    for (const part of parts) {
 
-  const mm =
-    time
-      .getMinutes()
-      .toString()
-      .padStart(2, "0");
+      try {
 
-  const name =
-    document.createElement(
-      "span"
+        // TEXT
+        if (
+          part.type === "text"
+        ) {
+
+          body.appendChild(
+            document.createTextNode(
+              part.value
+            )
+          );
+        }
+
+        // URL
+        else if (
+          part.type === "url"
+        ) {
+
+          const safe =
+            safeURL(
+              part.value
+            );
+
+          if (!safe) {
+            continue;
+          }
+
+          // YouTube
+          if (
+            isYouTube(
+              part.value
+            )
+          ) {
+
+            const link =
+              document.createElement(
+                "a"
+              );
+
+            link.href =
+              part.value;
+
+            link.textContent =
+              part.value;
+
+            link.target =
+              "_blank";
+
+            link.rel =
+              "noopener noreferrer";
+
+            link.style.color =
+              "#6ea8ff";
+
+            link.style.display =
+              "block";
+
+            body.appendChild(
+              link
+            );
+
+            body.appendChild(
+              createYouTubeEmbed(
+                part.value
+              )
+            );
+
+            continue;
+          }
+
+          // Tenor
+          if (
+            isTenor(
+              safe.href
+            )
+          ) {
+
+            createTenorEmbed(
+              safe.href
+            )
+            .then(embed => {
+
+              body.appendChild(
+                embed
+              );
+            })
+            .catch(err => {
+
+              console.error(
+                "Tenor embed failed:",
+                err
+              );
+
+              body.appendChild(
+                createLink(
+                  safe.href
+                )
+              );
+            });
+
+            continue;
+          }
+
+          // Images
+          if (
+            isImage(
+              safe.href
+            )
+          ) {
+
+            body.appendChild(
+              createImageEmbed(
+                safe.href
+              )
+            );
+
+            continue;
+          }
+
+          // Normal links
+          body.appendChild(
+            createLink(
+              safe.href
+            )
+          );
+        }
+
+        // MENTION
+        else if (
+          part.type ===
+          "mention"
+        ) {
+
+          const mention =
+            document.createElement(
+              "span"
+            );
+
+          mention.textContent =
+            "@" + part.value;
+
+          mention.style.fontWeight =
+            "bold";
+
+          mention.style.color =
+            "#644dff";
+
+          body.appendChild(
+            mention
+          );
+        }
+
+      } catch (err) {
+
+        console.error(
+          "Message part failed:",
+          err,
+          part
+        );
+      }
+    }
+
+    container.appendChild(
+      body
     );
 
-  name.style.color =
-    msg.color;
-
-  name.textContent =
-    msg.username;
-
-  const timeSpan =
-    document.createElement(
-      "span"
+    messagesDiv.appendChild(
+      container
     );
 
-  timeSpan.style.color =
-    "gray";
+    messagesDiv.scrollTop =
+      messagesDiv.scrollHeight;
 
-  timeSpan.textContent =
-    ` [${hh}:${mm}]: `;
+    /* SOUND */
 
-  container.appendChild(name);
-
-  container.appendChild(
-    timeSpan
-  );
-
-  /* BODY */
-
-  const body =
-    document.createElement(
-      "span"
-    );
-
-  const parts =
-    tokenizeMessage(
-      msg.content
-    );
-
-  for (const part of parts) {
-
-    // TEXT
     if (
-      part.type === "text"
+      playSound &&
+      document.visibilityState !==
+        "visible"
     ) {
 
-      body.appendChild(
-        document.createTextNode(
-          part.value
-        )
-      );
+      messageSound.currentTime = 0;
+
+      messageSound
+        .play()
+        .catch(() => {});
     }
 
-    // URL
-    else if (
-      part.type === "url"
-    ) {
+  } catch (err) {
 
-      const safe =
-        safeURL(
-          part.value
-        );
-
-      if (!safe) {
-        continue;
-      }
-
-      // YouTube
-      if (
-        isYouTube(
-          safe.href
-        )
-      ) {
-
-        body.appendChild(
-          createYouTubeEmbed(
-            safe.href
-          )
-        );
-
-        continue;
-      }
-
-      // Tenor
-      if (
-        isTenor(
-          safe.href
-        )
-      ) {
-
-        body.appendChild(
-          createTenorEmbed(
-            safe.href
-          )
-        );
-
-        continue;
-      }
-
-      // Images
-      if (
-        isImage(
-          safe.href
-        )
-      ) {
-
-        body.appendChild(
-          createImageEmbed(
-            safe.href
-          )
-        );
-
-        continue;
-      }
-
-      // Normal links
-      body.appendChild(
-        createLink(
-          safe.href
-        )
-      );
-    }
-
-    // MENTION
-    else if (
-      part.type ===
-      "mention"
-    ) {
-
-      const mention =
-        document.createElement(
-          "span"
-        );
-
-      mention.textContent =
-        "@" + part.value;
-
-      mention.style.fontWeight =
-        "bold";
-
-      mention.style.color =
-        "#644dff";
-
-      body.appendChild(
-        mention
-      );
-    }
+    console.error(
+      "addMessage failed:",
+      err,
+      msg
+    );
   }
-
-  container.appendChild(body);
-
-  messagesDiv.appendChild(
-    container
-  );
-
-  messagesDiv.scrollTop =
-    messagesDiv.scrollHeight;
-
-  /* SOUND */
-
-  if (
-    playSound &&
-    document.visibilityState !==
-      "visible"
-  ) {
-
-    messageSound.currentTime = 0;
-
-    messageSound
-      .play()
-      .catch(() => {});
-  }
-}
+}              
