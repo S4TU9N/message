@@ -314,16 +314,27 @@ function subscribeMessages() {
   }
 
   activeChannel = supabaseClient
-    .channel("chat-" + room)
-    .on("postgres_changes", {
+  .channel("chat-" + room)
+  .on(
+    "postgres_changes",
+    {
       event: "INSERT",
       schema: "public",
       table: "messages",
       filter: `room=eq.${room}`
-    }, async (payload) => {
+    },
+    async (payload) => {
+      console.log("Realtime message:", payload);
       await addMessage(payload.new, initialLoadDone);
-    })
-    .subscribe();
+    }
+  )
+  .subscribe((status) => {
+    console.log("Realtime status:", status);
+
+    if (status === "SUBSCRIBED") {
+      setStatus("Realtime connected", "green");
+    }
+  });
 }
 
 /* -------------------- */
