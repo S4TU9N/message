@@ -8,16 +8,33 @@ const supabaseClient = supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
+setStatus("App loading...");
+
+supabaseClient.auth.getSession().then(({ data }) => {
+  if (data.session) {
+    setStatus("Logged in: " + data.session.user.email, "green");
+  } else {
+    setStatus("Not logged in", "gray");
+  }
+});
 
 /* -------------------- */
 /* STATUS */
 /* -------------------- */
 
-function setStatus(msg, color = "gray") {
-  const el = document.getElementById("statusBox");
-  if (!el) return;
-  el.textContent = msg;
-  el.style.color = color;
+function setStatus(msg, color = "black") {
+  const box = document.getElementById("statusBox");
+
+  if (!box) {
+    console.warn("statusBox missing:", msg);
+    return;
+  }
+
+  box.textContent = msg;
+  box.style.color = color;
+  box.style.fontWeight = "bold";
+  box.style.padding = "10px";
+  box.style.borderBottom = "1px solid #ccc";
 }
 
 /* -------------------- */
@@ -57,7 +74,7 @@ let activeChannel = null;
 /* -------------------- */
 
 async function signUp(email, password, username) {
-  setStatus("Signing up...");
+  setStatus("Signing up...", "gray");
 
   const { data, error } = await supabaseClient.auth.signUp({
     email,
@@ -69,73 +86,65 @@ async function signUp(email, password, username) {
     return false;
   }
 
-  if (!data?.user) {
-    setStatus("Check email to confirm account", "orange");
-    return false;
-  }
+  setStatus("Account created (check email)", "green");
 
-  const color =
-    "#" + Math.floor(Math.random() * 16777215)
-      .toString(16)
-      .padStart(6, "0");
-
-  const { error: profileError } =
-    await supabaseClient.from("profiles").insert([
-      {
-        id: data.user.id,
-        username,
-        color
-      }
-    ]);
-
-  if (profileError) {
-    setStatus("Profile error: " + profileError.message, "red");
-    return false;
-  }
-
-  setStatus("Signup success", "green");
   return true;
 }
 
 async function login(email, password) {
-  setStatus("Logging in...");
+  setStatus("Logging in...", "gray");
 
-  const { error } =
-    await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
 
   if (error) {
     setStatus("Login failed: " + error.message, "red");
     return false;
   }
 
-  setStatus("Login success", "green");
+  const loaded = await loadCurrentUser();
+
+  if (loaded) {
+    setStatus("Logged in successfully", "green");
+  }
+
   return true;
 }
 
 async function loadCurrentUser() {
-  const { data: { user } } =
+  const { data: { user }, error } =
     await supabaseClient.auth.getUser();
 
-  if (!user) return false;
+  if (error) {
+    setStatus("Auth error: " + error.message, "red");
+    return false;
+  }
+
+  if (!user) {
+    setStatus("No active session", "gray");
+    return false;
+  }
 
   currentUser = user;
 
-  const { data, error } =
+  const { data: profile, error: pError } =
     await supabaseClient
       .from("profiles")
       .select("*")
       .eq("id", user.id)
       .single();
 
-  if (error || !data) {
-    setStatus("Profile load failed", "red");
+  if (pError || !profile) {
+    setStatus("Profile missing for user", "red");
     return false;
   }
 
-  currentProfile = data;
+  currentProfile = profile;
+
+  setStatus("Logged in as " + profile.username, "green");
+
   return true;
 }
 
