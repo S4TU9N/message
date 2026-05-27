@@ -90,7 +90,7 @@ async function signUp(email, password, username) {
     return false;
   }
 
-  setStatus("Account created (check email)", "green");
+  setStatus("Account created", "green");
 if (data.user) {
 
     const { error: profileError } =
@@ -167,8 +167,8 @@ async function loadCurrentUser() {
     await supabaseClient
       .from("profiles")
       .select("*")
-      .eq("id", user.id)
-      .single().catch(() => null);
+      .eq("id", currentUser.id)
+      .single();
 
   if (pError || !profile) {
     setStatus("Profile missing for user", "red");
