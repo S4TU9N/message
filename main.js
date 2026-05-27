@@ -91,6 +91,35 @@ async function signUp(email, password, username) {
   }
 
   setStatus("Account created (check email)", "green");
+if (data.user) {
+
+    const { error: profileError } =
+      await supabaseClient
+        .from("profiles")
+        .insert([
+          {
+            id: data.user.id,
+            username: username,
+            color: "#6c8cff"
+          }
+        ]);
+
+    if (profileError) {
+
+      setStatus(
+        "Profile creation failed: " +
+        profileError.message,
+        "red"
+      );
+
+      return false;
+    }
+  }
+
+  setStatus(
+    "Signup successful",
+    "green"
+  );
 
   return true;
 }
