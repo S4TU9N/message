@@ -532,6 +532,24 @@ loginBtn.onclick = async () => {
 /* -------------------- */
 
 (async () => {
-  const loaded = await loadCurrentUser();
-  if (loaded) setStatus("Session restored", "green");
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+
+    if (error) {
+      console.warn("Session init warning:", error.message);
+      setStatus("Auth initializing...", "gray");
+      return;
+    }
+
+    if (data.session) {
+      currentUser = data.session.user;
+      await loadCurrentUser();
+      setStatus("Session restored", "green");
+    } else {
+      setStatus("Not logged in", "gray");
+    }
+  } catch (e) {
+    console.warn(e);
+    setStatus("Auth not ready", "gray");
+  }
 })();
