@@ -13,15 +13,30 @@ const supabaseClient = supabase.createClient(
 /* ELEMENTS */
 /* -------------------- */
 
+
 const setupDiv = document.getElementById("setup");
 const chatDiv = document.getElementById("chat");
 
-const nameInput = document.getElementById("nameInput");
 const roomInput = document.getElementById("roomInput");
-const passwordInput = document.getElementById("passwordInput");
-const colorInput = document.getElementById("colorInput");
+const emailInput =
+  document.getElementById("emailInput");
+
+const passwordInput =
+  document.getElementById("passwordInput");
+
+const usernameInput =
+  document.getElementById("usernameInput");
+
+  
+
 
 const joinBtn = document.getElementById("joinBtn");
+
+const signupBtn =
+  document.getElementById("signupBtn");
+
+const loginBtn =
+  document.getElementById("loginBtn");
 
 const messagesDiv = document.getElementById("messages");
 
@@ -38,42 +53,230 @@ const messageSound =
 /* STATE */
 /* -------------------- */
 
-let username = "";
+let currentUser = null;
+let currentProfile = null;
 let room = "";
-let userColor = "";
 
 let initialLoadDone = false;
 let activeChannel = null;
 
 /* -------------------- */
-/* LOAD SAVED INFO */
+/* AUTH */
 /* -------------------- */
 
-nameInput.value =
-  localStorage.getItem("chat_name") || "";
+async function signUp(
+  email,
+  password,
+  username
+) {
 
-const savedColor =
-  localStorage.getItem("chat_color");
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth.signUp({
+      email,
+      password
+    });
 
-if (savedColor) {
+  if (error) {
 
-  userColor = savedColor;
+    alert(error.message);
 
-} else {
+    return false;
+  }
 
-  userColor =
+  if (!data.user) {
+
+    alert(
+      "Check your email to confirm signup."
+    );
+
+    return false;
+  }
+
+  const color =
     "#" +
     Math.floor(Math.random() * 16777215)
       .toString(16)
       .padStart(6, "0");
 
-  localStorage.setItem(
-    "chat_color",
-    userColor
-  );
+  const {
+    error: profileError
+  } =
+    await supabaseClient
+      .from("profiles")
+      .insert([
+        {
+          id: data.user.id,
+          username,
+          color
+        }
+      ]);
+
+  if (profileError) {
+
+    alert(profileError.message);
+
+    return false;
+  }
+
+  return true;
 }
 
-colorInput.value = userColor;
+async function login(
+  email,
+  password
+) {
+
+  const { error } =
+    await supabaseClient.auth
+      .signInWithPassword({
+        email,
+        password
+      });
+
+  if (error) {
+
+    alert(error.message);
+
+    return false;
+  }
+
+  return true;
+}
+
+function updateAuthUI() {
+
+  if (currentProfile) {
+
+    loginBtn.style.display = "none";
+    signupBtn.style.display = "none";
+
+    emailInput.style.display = "none";
+    passwordInput.style.display = "none";
+    usernameInput.style.display = "none";
+  }
+}
+
+/* -------------------- */
+/* AUTH BUTTONS */
+/* -------------------- */
+
+signupBtn.addEventListener(
+  "click",
+  async () => {
+
+    const email =
+      emailInput.value.trim();
+
+    const password =
+      passwordInput.value.trim();
+
+    const username =
+      usernameInput.value.trim();
+
+    if (
+      !email ||
+      !password ||
+      !username
+    ) {
+
+      alert(
+        "Fill in all fields."
+      );
+
+      return;
+    }
+
+    const success =
+      await signUp(
+        email,
+        password,
+        username
+      );
+
+    if (success) {
+
+      alert(
+        "Account created."
+      );
+    }
+  }
+);
+
+loginBtn.addEventListener(
+  "click",
+  async () => {
+
+    const email =
+      emailInput.value.trim();
+
+    const password =
+      passwordInput.value.trim();
+
+    if (
+      !email ||
+      !password
+    ) {
+
+      alert(
+        "Fill in all fields."
+      );
+
+      return;
+    }
+
+    const success =
+      await login(
+        email,
+        password
+      );
+
+    if (success) {
+
+      alert(
+        "Logged in."
+      );
+    }
+  }
+);
+
+async function loadCurrentUser() {
+
+  const {
+    data: { user }
+  } =
+    await supabaseClient.auth.getUser();
+
+  if (!user) {
+    return false;
+  }
+
+  currentUser = user;
+
+  const {
+    data: profile,
+    error
+  } =
+    await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+  if (error || !profile) {
+
+    console.error(error);
+
+    return false;
+  }
+
+  currentProfile = profile;
+  updateAuthUI();
+  return true;
+}
+
 
 /* -------------------- */
 /* ROOM FROM URL */
@@ -96,31 +299,81 @@ joinBtn.addEventListener(
   "click",
   joinRoom
 );
+async function createRoom(
+  roomName
+) {
+
+  if (!currentUser) {
+    return;
+  }
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("rooms")
+      .insert([
+        {
+          room_name:
+            roomName,
+          owner_id:
+            currentUser.id
+        }
+      ]);
+
+  if (error) {
+
+    console.error(error);
+  }
+}
+
+async function isRoomOwner(
+  roomName
+) {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("rooms")
+      .select("*")
+      .eq(
+        "room_name",
+        roomName
+      )
+      .single();
+
+  if (error || !data) {
+    return false;
+  }
+
+  return (
+    data.owner_id ===
+    currentUser.id
+  );
+}
 
 async function joinRoom() {
-
-  username =
-    nameInput.value.trim();
 
   room =
     roomInput.value.trim();
 
-  userColor =
-    colorInput.value;
-
-  if (!username || !room) {
+  if (!room) {
     return;
   }
 
-  localStorage.setItem(
-    "chat_name",
-    username
-  );
+  const loaded =
+    await loadCurrentUser();
 
-  localStorage.setItem(
-    "chat_color",
-    userColor
-  );
+  if (!loaded) {
+
+    alert(
+      "You must log in first."
+    );
+
+    return;
+  }
 
   const newUrl =
     window.location.origin +
@@ -134,9 +387,13 @@ async function joinRoom() {
     newUrl
   );
 
-  setupDiv.classList.add("hidden");
+  setupDiv.classList.add(
+    "hidden"
+  );
 
-  chatDiv.classList.remove("hidden");
+  chatDiv.classList.remove(
+    "hidden"
+  );
 
   await loadMessages();
 
@@ -147,18 +404,15 @@ async function joinRoom() {
 /* ENTER KEY SUPPORT */
 /* -------------------- */
 
-[nameInput, roomInput].forEach(input => {
+roomInput.addEventListener(
+  "keydown",
+  (e) => {
 
-  input.addEventListener(
-    "keydown",
-    (e) => {
-
-      if (e.key === "Enter") {
-        joinRoom();
-      }
+    if (e.key === "Enter") {
+      joinRoom();
     }
-  );
-});
+  }
+);
 
 messageInput.addEventListener(
   "keydown",
@@ -179,6 +433,7 @@ sendBtn.addEventListener(
   sendMessage
 );
 
+
 async function sendMessage() {
 
   const content =
@@ -188,16 +443,43 @@ async function sendMessage() {
     return;
   }
 
-  await supabaseClient
-    .from("messages")
-    .insert([
-      {
-        room,
-        username,
-        content,
-        color: userColor
-      }
-    ]);
+  if (content.length > 2000) {
+
+  alert(
+    "Message too long."
+  );
+
+  return;
+  }
+
+  if (!currentUser) {
+    return;
+  }
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("messages")
+      .insert([
+        {
+          room,
+          user_id:
+            currentUser.id,
+          username:
+            currentProfile.username,
+          color:
+            currentProfile.color,
+          content
+        }
+      ]);
+
+  if (error) {
+
+    console.error(error);
+
+    return;
+  }
 
   messageInput.value = "";
 }
@@ -233,14 +515,17 @@ async function loadMessages() {
     return;
   }
 
-  data.forEach(msg => {
+    for (const msg of data) {
 
-    addMessage(msg, false);
-  });
+      await addMessage(
+        msg,
+        false
+      );
+    }
 
   initialLoadDone = true;
-}
 
+}
 /* -------------------- */
 /* REALTIME */
 /* -------------------- */
@@ -262,9 +547,10 @@ function subscribeMessages() {
         {
           event: "INSERT",
           schema: "public",
-          table: "messages"
+          table: "messages",
+          filter: `room=eq.${room}`
         },
-        (payload) => {
+        async (payload) => {
 
           const msg = payload.new;
 
@@ -283,8 +569,7 @@ function subscribeMessages() {
           ) {
             return;
           }
-
-          addMessage(
+          await addMessage(
             msg,
             initialLoadDone
           );
@@ -389,50 +674,7 @@ function isYouTube(url) {
   );
 }
 
-function getYouTubeID(url) {
-  try {
-    const u = new URL(url);
 
-    let id = null;
-
-    // youtu.be/ID
-    if (u.hostname.includes("youtu.be")) {
-      id = u.pathname.split("/")[1];
-    }
-
-    // youtube.com/watch?v=ID
-    else if (u.searchParams.get("v")) {
-      id = u.searchParams.get("v");
-    }
-
-    // youtube.com/shorts/ID
-    else if (u.pathname.includes("/shorts/")) {
-      id = u.pathname.split("/shorts/")[1];
-    }
-
-    // youtube.com/embed/ID
-    else if (u.pathname.includes("/embed/")) {
-      id = u.pathname.split("/embed/")[1];
-    }
-
-    if (!id) return null;
-
-    // remove extra URL junk
-    id = id.split("?")[0];
-    id = id.split("&")[0];
-    id = id.split("/")[0];
-
-    // valid YouTube IDs are 11 chars
-    if (!/^[a-zA-Z0-9_-]{11}$/.test(id)) {
-      return null;
-    }
-
-    return id;
-
-  } catch {
-    return null;
-  }
-}
 function getYouTubeID(url) {
   try {
     const u = new URL(url);
@@ -512,67 +754,55 @@ function isTenor(url) {
   );
 }
 
-function createTenorEmbed(url) {
+function createTenorEmbed(
+  url
+) {
 
-  try {
+  const match =
+    url.match(/-(\d+)(\?.*)?$/);
 
-    const u =
-      new URL(url);
+  if (!match) {
 
-    const match =
-      u.pathname.match(
-        /-(\d+)$/
-      );
+    return null;
+  }
 
-    if (!match) {
+  const gifId =
+    match[1];
 
-      return createLink(url);
-    }
-
-    const gifId =
-      match[1];
-
-    const iframe =
-      document.createElement(
-        "iframe"
-      );
-
-    iframe.src =
-      `https://tenor.com/embed/${gifId}`;
-
-    iframe.width = "320";
-
-    iframe.height = "320";
-
-    iframe.loading =
-      "lazy";
-
-    iframe.style.border =
-      "none";
-
-    iframe.style.borderRadius =
-      "10px";
-
-    iframe.style.marginTop =
-      "6px";
-
-    iframe.style.display =
-      "block";
-
-    iframe.allowFullscreen =
-      true;
-
-    return iframe;
-
-  } catch (err) {
-
-    console.error(
-      "Tenor embed failed:",
-      err
+  const iframe =
+    document.createElement(
+      "iframe"
     );
 
-    return createLink(url);
-  }
+  iframe.src =
+    `https://tenor.com/embed/${gifId}`;
+
+  iframe.width = "320";
+
+  iframe.height = "320";
+
+  iframe.loading =
+    "lazy";
+
+  iframe.style.border =
+    "none";
+
+  iframe.style.borderRadius =
+    "10px";
+
+  iframe.style.marginTop =
+    "6px";
+
+  iframe.style.display =
+    "block";
+
+  iframe.allowFullscreen =
+    true;
+
+  iframe.referrerPolicy =
+    "strict-origin-when-cross-origin";
+
+  return iframe;
 }
 
 /* -------------------- */
@@ -581,7 +811,7 @@ function createTenorEmbed(url) {
 
 function isImage(url) {
 
-  return /\.(png|jpg|jpeg|gif|webp)$/i
+  return /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i
     .test(url);
 }
 
@@ -632,7 +862,7 @@ function createLink(url) {
 /* ADD MESSAGE */
 /* -------------------- */
 
-function addMessage(
+async function addMessage(
   msg,
   playSound = true
 ) {
@@ -725,113 +955,118 @@ function addMessage(
           part.type === "url"
         ) {
 
-          const safe =
-            safeURL(
-              part.value
-            );
+          try {
 
-          if (!safe) {
-            continue;
-          }
-
-          // YouTube
-          if (
-            isYouTube(
-              part.value
-            )
-          ) {
-
-            const link =
-              document.createElement(
-                "a"
-              );
-
-            link.href =
-              part.value;
-
-            link.textContent =
-              part.value;
-
-            link.target =
-              "_blank";
-
-            link.rel =
-              "noopener noreferrer";
-
-            link.style.color =
-              "#6ea8ff";
-
-            link.style.display =
-              "block";
-
-            body.appendChild(
-              link
-            );
-
-            body.appendChild(
-              createYouTubeEmbed(
+            const safe =
+              safeURL(
                 part.value
-              )
-            );
-
-            continue;
-          }
-
-          // Tenor
-          if (
-            isTenor(
-              safe.href
-            )
-          ) {
-
-            createTenorEmbed(
-              safe.href
-            )
-            .then(embed => {
-
-              body.appendChild(
-                embed
-              );
-            })
-            .catch(err => {
-
-              console.error(
-                "Tenor embed failed:",
-                err
               );
 
-              body.appendChild(
-                createLink(
-                  safe.href
-                )
-              );
-            });
+            if (!safe) {
+              continue;
+            }
 
-            continue;
-          }
-
-          // Images
-          if (
-            isImage(
-              safe.href
-            )
-          ) {
-
+            // hyperlink first
             body.appendChild(
-              createImageEmbed(
+              createLink(
                 safe.href
               )
             );
 
-            continue;
-          }
+            // YouTube
+            if (
+              isYouTube(
+                safe.href
+              )
+            ) {
 
-          // Normal links
-          body.appendChild(
-            createLink(
-              safe.href
-            )
-          );
+              try {
+
+                const embed =
+                  createYouTubeEmbed(
+                    safe.href
+                  );
+
+                body.appendChild(
+                  embed
+                );
+
+              } catch (err) {
+
+                console.error(
+                  "YouTube embed failed:",
+                  err
+                );
+              }
+
+              continue;
+            }
+
+            // Tenor
+            if (
+              isTenor(
+                safe.href
+              )
+            ) {
+
+              try {
+
+                const embed =
+                  createTenorEmbed(
+                    safe.href
+                  );
+
+                if (embed) {
+
+                  body.appendChild(
+                    embed
+                  );
+                }
+
+              } catch (err) {
+
+                console.error(
+                  "Tenor embed failed:",
+                  err
+                );
+              }
+
+              continue;
+            }
+
+            // Images
+            if (
+              isImage(
+                safe.href
+              )
+            ) {
+
+              try {
+
+                body.appendChild(
+                  createImageEmbed(
+                    safe.href
+                  )
+                );
+
+              } catch (err) {
+
+                console.error(
+                  "Image embed failed:",
+                  err
+                );
+              }
+
+              continue;
+            }
+
+          } catch (err) {
+
+            console.error(
+              "Message part failed:",
+              err
+            );
+          }
         }
 
         // MENTION
@@ -903,4 +1138,32 @@ function addMessage(
       msg
     );
   }
-}              
+}
+/* -------------------- */
+/* AUTO LOGIN */
+/* -------------------- */
+
+(async () => {
+
+  const loaded =
+    await loadCurrentUser();
+  const {
+    data: existingRoom
+  } = await supabaseClient
+    .from("rooms")
+    .select("*")
+    .eq("room_name", room)
+    .single();
+
+  if (!existingRoom) {
+
+    await createRoom(room);
+  }
+  if (loaded) {
+
+    console.log(
+      "Logged in as",
+      currentProfile.username
+    );
+  }
+})();
