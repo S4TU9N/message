@@ -1,122 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
   <meta charset="UTF-8" />
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chat</title>
 
-  <link
-    rel="stylesheet"
-    href="style.css"
-  >
+  <link rel="stylesheet" href="style.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 </head>
 
 <body>
 
-  <!-- SETUP -->
+  <!-- STATUS BAR (important for debugging without devtools) -->
+  <div id="statusBox" style="padding:8px; font-family: monospace;">
+    idle
+  </div>
 
+  <!-- AUTH / SETUP SCREEN -->
   <div id="setup">
 
-    <h1>
-      Chat Test V.2.0
-    </h1>
+    <h1>Chat</h1>
 
-    <!-- USERNAME -->
+    <input id="emailInput" type="email" placeholder="Email" />
 
-    <input
-      id="usernameInput"
-      type="text"
-      placeholder="Username"
-      maxlength="20"
-    >
+    <input id="passwordInput" type="password" placeholder="Password" />
 
-    <!-- EMAIL -->
+    <input id="usernameInput" type="text" placeholder="Username" maxlength="20" />
 
-    <input
-      id="emailInput"
-      type="email"
-      placeholder="Email"
-    >
-
-    <!-- PASSWORD -->
-
-    <input
-      id="passwordInput"
-      type="password"
-      placeholder="Password"
-    >
-
-    <!-- ROOM -->
-
-    <input
-      id="roomInput"
-      type="text"
-      placeholder="Room Name"
-    >
-
-    <!-- AUTH BUTTONS -->
-
-    <div id="authButtons">
-
-      <button id="signupBtn">
-        Sign Up
-      </button>
-
-      <button id="loginBtn">
-        Login
-      </button>
-
+    <div style="margin-top:10px;">
+      <button id="signupBtn">Sign Up</button>
+      <button id="loginBtn">Login</button>
     </div>
 
-    <!-- JOIN -->
+    <hr />
 
-    <button id="joinBtn">
-      Join Room
-    </button>
+    <input id="roomInput" type="text" placeholder="Room name" />
+
+    <button id="joinBtn">Join Room</button>
 
   </div>
 
-  <!-- CHAT -->
+  <!-- CHAT SCREEN -->
+  <div id="chat" class="hidden">
 
-  <div
-    id="chat"
-    class="hidden"
-  >
-
-    <div id="messages"></div>
+    <div id="messages"
+         style="height:400px; overflow-y:auto; padding:10px;">
+    </div>
 
     <div id="inputBar">
 
-      <input
-        id="messageInput"
-        type="text"
-        placeholder="Message..."
-      >
+      <input id="messageInput" type="text" placeholder="Message..." />
 
-      <button id="sendBtn">
-        Send
-      </button>
+      <button id="sendBtn">Send</button>
 
     </div>
 
   </div>
-
-  <!-- DEBUG -->
-
-  <div id="debug"></div>
 
   <script src="main.js"></script>
 
 </body>
-
 </html>

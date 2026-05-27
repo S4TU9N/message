@@ -10,44 +10,37 @@ const supabaseClient = supabase.createClient(
 );
 
 /* -------------------- */
-/* ELEMENTS */
+/* STATUS */
 /* -------------------- */
 
+function setStatus(msg, color = "gray") {
+  const el = document.getElementById("statusBox");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = color;
+}
+
+/* -------------------- */
+/* ELEMENTS */
+/* -------------------- */
 
 const setupDiv = document.getElementById("setup");
 const chatDiv = document.getElementById("chat");
 
 const roomInput = document.getElementById("roomInput");
-const emailInput =
-  document.getElementById("emailInput");
-
-const passwordInput =
-  document.getElementById("passwordInput");
-
-const usernameInput =
-  document.getElementById("usernameInput");
-
-  
-
+const emailInput = document.getElementById("emailInput");
+const passwordInput = document.getElementById("passwordInput");
+const usernameInput = document.getElementById("usernameInput");
 
 const joinBtn = document.getElementById("joinBtn");
-
-const signupBtn =
-  document.getElementById("signupBtn");
-
-const loginBtn =
-  document.getElementById("loginBtn");
+const signupBtn = document.getElementById("signupBtn");
+const loginBtn = document.getElementById("loginBtn");
 
 const messagesDiv = document.getElementById("messages");
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
 
-const messageInput =
-  document.getElementById("messageInput");
-
-const sendBtn =
-  document.getElementById("sendBtn");
-
-const messageSound =
-  new Audio("ping.mp3");
+const messageSound = new Audio("ping.mp3");
 
 /* -------------------- */
 /* STATE */
@@ -56,7 +49,6 @@ const messageSound =
 let currentUser = null;
 let currentProfile = null;
 let room = "";
-
 let initialLoadDone = false;
 let activeChannel = null;
 
@@ -64,420 +56,157 @@ let activeChannel = null;
 /* AUTH */
 /* -------------------- */
 
-async function signUp(
-  email,
-  password,
-  username
-) {
+async function signUp(email, password, username) {
+  setStatus("Signing up...");
 
-  const {
-    data,
-    error
-  } =
-    await supabaseClient.auth.signUp({
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password
+  });
+
+  if (error) {
+    setStatus("Signup failed: " + error.message, "red");
+    return false;
+  }
+
+  if (!data?.user) {
+    setStatus("Check email to confirm account", "orange");
+    return false;
+  }
+
+  const color =
+    "#" + Math.floor(Math.random() * 16777215)
+      .toString(16)
+      .padStart(6, "0");
+
+  const { error: profileError } =
+    await supabaseClient.from("profiles").insert([
+      {
+        id: data.user.id,
+        username,
+        color
+      }
+    ]);
+
+  if (profileError) {
+    setStatus("Profile error: " + profileError.message, "red");
+    return false;
+  }
+
+  setStatus("Signup success", "green");
+  return true;
+}
+
+async function login(email, password) {
+  setStatus("Logging in...");
+
+  const { error } =
+    await supabaseClient.auth.signInWithPassword({
       email,
       password
     });
 
   if (error) {
-
-    alert(error.message);
-
+    setStatus("Login failed: " + error.message, "red");
     return false;
   }
 
-  if (!data.user) {
-
-    alert(
-      "Check your email to confirm signup."
-    );
-
-    return false;
-  }
-
-  const color =
-    "#" +
-    Math.floor(Math.random() * 16777215)
-      .toString(16)
-      .padStart(6, "0");
-
-  const {
-    error: profileError
-  } =
-    await supabaseClient
-      .from("profiles")
-      .insert([
-        {
-          id: data.user.id,
-          username,
-          color
-        }
-      ]);
-
-  if (profileError) {
-
-    alert(profileError.message);
-
-    return false;
-  }
-
+  setStatus("Login success", "green");
   return true;
 }
-
-async function login(
-  email,
-  password
-) {
-
-  const { error } =
-    await supabaseClient.auth
-      .signInWithPassword({
-        email,
-        password
-      });
-
-  if (error) {
-
-    alert(error.message);
-
-    return false;
-  }
-
-  return true;
-}
-
-function updateAuthUI() {
-
-  if (currentProfile) {
-
-    loginBtn.style.display = "none";
-    signupBtn.style.display = "none";
-
-    emailInput.style.display = "none";
-    passwordInput.style.display = "none";
-    usernameInput.style.display = "none";
-  }
-}
-
-/* -------------------- */
-/* AUTH BUTTONS */
-/* -------------------- */
-
-signupBtn.addEventListener(
-  "click",
-  async () => {
-
-    const email =
-      emailInput.value.trim();
-
-    const password =
-      passwordInput.value.trim();
-
-    const username =
-      usernameInput.value.trim();
-
-    if (
-      !email ||
-      !password ||
-      !username
-    ) {
-
-      alert(
-        "Fill in all fields."
-      );
-
-      return;
-    }
-
-    const success =
-      await signUp(
-        email,
-        password,
-        username
-      );
-
-    if (success) {
-
-      alert(
-        "Account created."
-      );
-    }
-  }
-);
-
-loginBtn.addEventListener(
-  "click",
-  async () => {
-
-    const email =
-      emailInput.value.trim();
-
-    const password =
-      passwordInput.value.trim();
-
-    if (
-      !email ||
-      !password
-    ) {
-
-      alert(
-        "Fill in all fields."
-      );
-
-      return;
-    }
-
-    const success =
-      await login(
-        email,
-        password
-      );
-
-    if (success) {
-
-      alert(
-        "Logged in."
-      );
-    }
-  }
-);
 
 async function loadCurrentUser() {
-
-  const {
-    data: { user }
-  } =
+  const { data: { user } } =
     await supabaseClient.auth.getUser();
 
-  if (!user) {
-    return false;
-  }
+  if (!user) return false;
 
   currentUser = user;
 
-  const {
-    data: profile,
-    error
-  } =
+  const { data, error } =
     await supabaseClient
       .from("profiles")
       .select("*")
       .eq("id", user.id)
       .single();
 
-  if (error || !profile) {
-
-    console.error(error);
-
+  if (error || !data) {
+    setStatus("Profile load failed", "red");
     return false;
   }
 
-  currentProfile = profile;
-  updateAuthUI();
+  currentProfile = data;
   return true;
 }
 
-
 /* -------------------- */
-/* ROOM FROM URL */
+/* ROOM */
 /* -------------------- */
 
-const params =
-  new URLSearchParams(window.location.search);
+async function createRoom(name) {
+  if (!currentUser || !name) return;
 
-if (params.get("room")) {
-
-  roomInput.value =
-    params.get("room");
+  await supabaseClient.from("rooms").insert([
+    {
+      room_name: name,
+      owner_id: currentUser.id
+    }
+  ]);
 }
 
 /* -------------------- */
 /* JOIN ROOM */
 /* -------------------- */
 
-joinBtn.addEventListener(
-  "click",
-  joinRoom
-);
-async function createRoom(
-  roomName
-) {
-
-  if (!currentUser) {
-    return;
-  }
-
-  const {
-    error
-  } =
-    await supabaseClient
-      .from("rooms")
-      .insert([
-        {
-          room_name:
-            roomName,
-          owner_id:
-            currentUser.id
-        }
-      ]);
-
-  if (error) {
-
-    console.error(error);
-  }
-}
-
-async function isRoomOwner(
-  roomName
-) {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("rooms")
-      .select("*")
-      .eq(
-        "room_name",
-        roomName
-      )
-      .single();
-
-  if (error || !data) {
-    return false;
-  }
-
-  return (
-    data.owner_id ===
-    currentUser.id
-  );
-}
-
 async function joinRoom() {
+  room = roomInput.value.trim();
+  if (!room) return;
 
-  room =
-    roomInput.value.trim();
-
-  if (!room) {
-    return;
-  }
-
-  const loaded =
-    await loadCurrentUser();
-
+  const loaded = await loadCurrentUser();
   if (!loaded) {
-
-    alert(
-      "You must log in first."
-    );
-
+    setStatus("Login required", "red");
     return;
   }
 
-  const newUrl =
+  const url =
     window.location.origin +
     window.location.pathname +
     "?room=" +
     encodeURIComponent(room);
 
-  history.replaceState(
-    {},
-    "",
-    newUrl
-  );
+  history.replaceState({}, "", url);
 
-  setupDiv.classList.add(
-    "hidden"
-  );
+  setupDiv.classList.add("hidden");
+  chatDiv.classList.remove("hidden");
 
-  chatDiv.classList.remove(
-    "hidden"
-  );
-
+  await createRoom(room);
   await loadMessages();
-
   subscribeMessages();
+
+  setStatus("Joined room: " + room, "green");
 }
 
 /* -------------------- */
-/* ENTER KEY SUPPORT */
+/* MESSAGE SENDING */
 /* -------------------- */
-
-roomInput.addEventListener(
-  "keydown",
-  (e) => {
-
-    if (e.key === "Enter") {
-      joinRoom();
-    }
-  }
-);
-
-messageInput.addEventListener(
-  "keydown",
-  (e) => {
-
-    if (e.key === "Enter") {
-      sendMessage();
-    }
-  }
-);
-
-/* -------------------- */
-/* SEND MESSAGE */
-/* -------------------- */
-
-sendBtn.addEventListener(
-  "click",
-  sendMessage
-);
-
 
 async function sendMessage() {
+  const content = messageInput.value.trim();
+  if (!content || !currentUser) return;
 
-  const content =
-    messageInput.value.trim();
-
-  if (!content) {
-    return;
-  }
-
-  if (content.length > 2000) {
-
-  alert(
-    "Message too long."
-  );
-
-  return;
-  }
-
-  if (!currentUser) {
-    return;
-  }
-
-  const {
-    error
-  } =
-    await supabaseClient
-      .from("messages")
-      .insert([
-        {
-          room,
-          user_id:
-            currentUser.id,
-          username:
-            currentProfile.username,
-          color:
-            currentProfile.color,
-          content
-        }
-      ]);
+  const { error } =
+    await supabaseClient.from("messages").insert([
+      {
+        room,
+        user_id: currentUser.id,
+        username: currentProfile.username,
+        color: currentProfile.color,
+        content
+      }
+    ]);
 
   if (error) {
-
-    console.error(error);
-
+    setStatus("Send failed", "red");
     return;
   }
 
@@ -489,13 +218,10 @@ async function sendMessage() {
 /* -------------------- */
 
 async function loadMessages() {
-
   messagesDiv.innerHTML = "";
 
   const cutoff =
-    new Date(
-      Date.now() - 15 * 60 * 1000
-    ).toISOString();
+    new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
   const { data, error } =
     await supabaseClient
@@ -503,79 +229,40 @@ async function loadMessages() {
       .select("*")
       .eq("room", room)
       .gt("created_at", cutoff)
-      .order(
-        "created_at",
-        { ascending: true }
-      );
+      .order("created_at", { ascending: true });
 
   if (error) {
-
-    console.error(error);
-
+    setStatus("Load failed", "red");
     return;
   }
 
-    for (const msg of data) {
-
-      await addMessage(
-        msg,
-        false
-      );
-    }
+  for (const msg of data) {
+    await addMessage(msg, false);
+  }
 
   initialLoadDone = true;
-
 }
+
 /* -------------------- */
 /* REALTIME */
 /* -------------------- */
 
 function subscribeMessages() {
-
   if (activeChannel) {
-
-    supabaseClient.removeChannel(
-      activeChannel
-    );
+    supabaseClient.removeChannel(activeChannel);
   }
 
-  activeChannel =
-    supabaseClient
-      .channel("chat-" + room)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `room=eq.${room}`
-        },
-        async (payload) => {
-
-          const msg = payload.new;
-
-          if (msg.room !== room) {
-            return;
-          }
-
-          const msgTime =
-            new Date(
-              msg.created_at
-            ).getTime();
-
-          if (
-            Date.now() - msgTime >
-            15 * 60 * 1000
-          ) {
-            return;
-          }
-          await addMessage(
-            msg,
-            initialLoadDone
-          );
-        }
-      )
-      .subscribe();
+  activeChannel = supabaseClient
+    .channel("chat-" + room)
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "messages",
+      filter: `room=eq.${room}`
+    }, async (payload) => {
+      await addMessage(payload.new, initialLoadDone);
+    })
+    .subscribe();
 }
 
 /* -------------------- */
@@ -583,54 +270,23 @@ function subscribeMessages() {
 /* -------------------- */
 
 function tokenizeMessage(text) {
-
+  const regex = /(https?:\/\/[^\s]+)|@([a-zA-Z0-9_]+)/g;
   const tokens = [];
+  let last = 0;
 
-  const regex =
-    /(https?:\/\/[^\s]+)|@([a-zA-Z0-9_]+)/g;
-
-  let lastIndex = 0;
-
-  for (const match of text.matchAll(regex)) {
-
-    const index = match.index;
-
-    if (index > lastIndex) {
-
-      tokens.push({
-        type: "text",
-        value: text.slice(
-          lastIndex,
-          index
-        )
-      });
+  for (const m of text.matchAll(regex)) {
+    if (m.index > last) {
+      tokens.push({ type: "text", value: text.slice(last, m.index) });
     }
 
-    if (match[1]) {
+    if (m[1]) tokens.push({ type: "url", value: m[1] });
+    if (m[2]) tokens.push({ type: "mention", value: m[2] });
 
-      tokens.push({
-        type: "url",
-        value: match[1]
-      });
-
-    } else if (match[2]) {
-
-      tokens.push({
-        type: "mention",
-        value: match[2]
-      });
-    }
-
-    lastIndex =
-      index + match[0].length;
+    last = m.index + m[0].length;
   }
 
-  if (lastIndex < text.length) {
-
-    tokens.push({
-      type: "text",
-      value: text.slice(lastIndex)
-    });
+  if (last < text.length) {
+    tokens.push({ type: "text", value: text.slice(last) });
   }
 
   return tokens;
@@ -641,529 +297,154 @@ function tokenizeMessage(text) {
 /* -------------------- */
 
 function safeURL(url) {
-
   try {
-
-    const parsed =
-      new URL(url);
-
-    if (
-      parsed.protocol === "http:" ||
-      parsed.protocol === "https:"
-    ) {
-      return parsed;
-    }
-
-    return null;
-
+    const u = new URL(url);
+    return (u.protocol === "http:" || u.protocol === "https:") ? u : null;
   } catch {
-
     return null;
   }
 }
 
 /* -------------------- */
-/* YOUTUBE */
+/* EMBEDS */
 /* -------------------- */
 
 function isYouTube(url) {
-
-  return (
-    url.includes("youtube.com") ||
-    url.includes("youtu.be")
-  );
+  return url.includes("youtube.com") || url.includes("youtu.be");
 }
-
 
 function getYouTubeID(url) {
   try {
     const u = new URL(url);
-
-    let id = null;
-
-    if (u.hostname.includes("youtu.be")) {
-      id = u.pathname.slice(1);
-    }
-
-    else if (u.pathname.includes("/shorts/")) {
-      id = u.pathname.split("/shorts/")[1];
-    }
-
-    else if (u.pathname.includes("/embed/")) {
-      id = u.pathname.split("/embed/")[1];
-    }
-
-    else {
-      id = u.searchParams.get("v");
-    }
-
-    if (!id) return null;
-
-    // only strip noise, do NOT validate length
-    id = id.split("?")[0].split("&")[0].split("/")[0];
-
-    return id;
-
+    if (u.hostname.includes("youtu.be")) return u.pathname.slice(1);
+    return u.searchParams.get("v");
   } catch {
     return null;
   }
 }
 
 function createYouTubeEmbed(url) {
-
   const id = getYouTubeID(url);
-
-  if (!id) {
-    return document.createTextNode(url);
-  }
+  if (!id) return null;
 
   const iframe = document.createElement("iframe");
-
-  iframe.src =
-    `https://www.youtube.com/embed/${id}`;
-
+  iframe.src = `https://www.youtube.com/embed/${id}`;
   iframe.width = "320";
   iframe.height = "180";
-
   iframe.allowFullscreen = true;
-
-  iframe.allow =
-    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-
-  iframe.loading = "lazy";
-
   iframe.style.border = "none";
-  iframe.style.borderRadius = "10px";
-  iframe.style.marginTop = "6px";
-  iframe.style.display = "block";
-
-  iframe.referrerPolicy =
-    "strict-origin-when-cross-origin";
-
   return iframe;
 }
-
-/* -------------------- */
-/* TENOR */
-/* -------------------- */
 
 function isTenor(url) {
-
-  return (
-    url.includes("tenor.com/view/")
-  );
+  return url.includes("tenor.com/view/");
 }
 
-function createTenorEmbed(
-  url
-) {
+function createTenorEmbed(url) {
+  const match = url.match(/-(\d+)(\?.*)?$/);
+  if (!match) return null;
 
-  const match =
-    url.match(/-(\d+)(\?.*)?$/);
-
-  if (!match) {
-
-    return null;
-  }
-
-  const gifId =
-    match[1];
-
-  const iframe =
-    document.createElement(
-      "iframe"
-    );
-
-  iframe.src =
-    `https://tenor.com/embed/${gifId}`;
-
+  const iframe = document.createElement("iframe");
+  iframe.src = `https://tenor.com/embed/${match[1]}`;
   iframe.width = "320";
-
   iframe.height = "320";
-
-  iframe.loading =
-    "lazy";
-
-  iframe.style.border =
-    "none";
-
-  iframe.style.borderRadius =
-    "10px";
-
-  iframe.style.marginTop =
-    "6px";
-
-  iframe.style.display =
-    "block";
-
-  iframe.allowFullscreen =
-    true;
-
-  iframe.referrerPolicy =
-    "strict-origin-when-cross-origin";
-
+  iframe.style.border = "none";
   return iframe;
 }
 
-/* -------------------- */
-/* IMAGE */
-/* -------------------- */
-
 function isImage(url) {
-
-  return /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i
-    .test(url);
+  return /\.(png|jpg|jpeg|gif|webp)/i.test(url);
 }
 
 function createImageEmbed(url) {
-
-  const img =
-    document.createElement(
-      "img"
-    );
-
+  const img = document.createElement("img");
   img.src = url;
-
-  img.loading = "lazy";
-
   img.style.maxWidth = "300px";
-  img.style.borderRadius = "10px";
-  img.style.marginTop = "6px";
-  img.style.display = "block";
-
   return img;
 }
 
-/* -------------------- */
-/* NORMAL LINK */
-/* -------------------- */
-
 function createLink(url) {
-
-  const a =
-    document.createElement("a");
-
+  const a = document.createElement("a");
   a.href = url;
-
   a.textContent = url;
-
   a.target = "_blank";
-
-  a.rel =
-    "noopener noreferrer";
-
-  a.style.color =
-    "#6ea8ff";
-
   return a;
 }
 
 /* -------------------- */
-/* ADD MESSAGE */
+/* MESSAGE RENDER */
 /* -------------------- */
 
-async function addMessage(
-  msg,
-  playSound = true
-) {
-
+async function addMessage(msg, playSound = true) {
   try {
+    const container = document.createElement("div");
 
-    const container =
-      document.createElement(
-        "div"
-      );
+    const time = new Date(msg.created_at);
+    container.textContent = "";
 
-    container.style.marginBottom =
-      "10px";
+    const header = document.createElement("span");
+    header.style.color = msg.color;
+    header.textContent = msg.username + " ";
+    container.appendChild(header);
 
-    /* HEADER */
+    const body = document.createElement("span");
 
-    const time =
-      new Date(msg.created_at);
+    for (const part of tokenizeMessage(msg.content)) {
+      if (part.type === "text") {
+        body.appendChild(document.createTextNode(part.value));
+      }
 
-    const hh =
-      time
-        .getHours()
-        .toString()
-        .padStart(2, "0");
+      if (part.type === "url") {
+        const safe = safeURL(part.value);
+        if (!safe) continue;
 
-    const mm =
-      time
-        .getMinutes()
-        .toString()
-        .padStart(2, "0");
+        body.appendChild(createLink(safe.href));
 
-    const name =
-      document.createElement(
-        "span"
-      );
-
-    name.style.color =
-      msg.color;
-
-    name.textContent =
-      msg.username;
-
-    const timeSpan =
-      document.createElement(
-        "span"
-      );
-
-    timeSpan.style.color =
-      "gray";
-
-    timeSpan.textContent =
-      ` [${hh}:${mm}]: `;
-
-    container.appendChild(name);
-
-    container.appendChild(
-      timeSpan
-    );
-
-    /* BODY */
-
-    const body =
-      document.createElement(
-        "span"
-      );
-
-    const parts =
-      tokenizeMessage(
-        msg.content
-      );
-
-    for (const part of parts) {
-
-      try {
-
-        // TEXT
-        if (
-          part.type === "text"
-        ) {
-
-          body.appendChild(
-            document.createTextNode(
-              part.value
-            )
-          );
+        if (isYouTube(safe.href)) {
+          const embed = createYouTubeEmbed(safe.href);
+          if (embed) body.appendChild(embed);
         }
 
-        // URL
-        else if (
-          part.type === "url"
-        ) {
-
-          try {
-
-            const safe =
-              safeURL(
-                part.value
-              );
-
-            if (!safe) {
-              continue;
-            }
-
-            // hyperlink first
-            body.appendChild(
-              createLink(
-                safe.href
-              )
-            );
-
-            // YouTube
-            if (
-              isYouTube(
-                safe.href
-              )
-            ) {
-
-              try {
-
-                const embed =
-                  createYouTubeEmbed(
-                    safe.href
-                  );
-
-                body.appendChild(
-                  embed
-                );
-
-              } catch (err) {
-
-                console.error(
-                  "YouTube embed failed:",
-                  err
-                );
-              }
-
-              continue;
-            }
-
-            // Tenor
-            if (
-              isTenor(
-                safe.href
-              )
-            ) {
-
-              try {
-
-                const embed =
-                  createTenorEmbed(
-                    safe.href
-                  );
-
-                if (embed) {
-
-                  body.appendChild(
-                    embed
-                  );
-                }
-
-              } catch (err) {
-
-                console.error(
-                  "Tenor embed failed:",
-                  err
-                );
-              }
-
-              continue;
-            }
-
-            // Images
-            if (
-              isImage(
-                safe.href
-              )
-            ) {
-
-              try {
-
-                body.appendChild(
-                  createImageEmbed(
-                    safe.href
-                  )
-                );
-
-              } catch (err) {
-
-                console.error(
-                  "Image embed failed:",
-                  err
-                );
-              }
-
-              continue;
-            }
-
-          } catch (err) {
-
-            console.error(
-              "Message part failed:",
-              err
-            );
-          }
+        if (isTenor(safe.href)) {
+          const embed = createTenorEmbed(safe.href);
+          if (embed) body.appendChild(embed);
         }
 
-        // MENTION
-        else if (
-          part.type ===
-          "mention"
-        ) {
-
-          const mention =
-            document.createElement(
-              "span"
-            );
-
-          mention.textContent =
-            "@" + part.value;
-
-          mention.style.fontWeight =
-            "bold";
-
-          mention.style.color =
-            "#644dff";
-
-          body.appendChild(
-            mention
-          );
+        if (isImage(safe.href)) {
+          body.appendChild(createImageEmbed(safe.href));
         }
+      }
 
-      } catch (err) {
-
-        console.error(
-          "Message part failed:",
-          err,
-          part
-        );
+      if (part.type === "mention") {
+        const m = document.createElement("span");
+        m.textContent = "@" + part.value;
+        body.appendChild(m);
       }
     }
 
-    container.appendChild(
-      body
-    );
-
-    messagesDiv.appendChild(
-      container
-    );
-
-    messagesDiv.scrollTop =
-      messagesDiv.scrollHeight;
-
-    /* SOUND */
-
-    if (
-      playSound &&
-      document.visibilityState !==
-        "visible"
-    ) {
-
-      messageSound.currentTime = 0;
-
-      messageSound
-        .play()
-        .catch(() => {});
-    }
-
-  } catch (err) {
-
-    console.error(
-      "addMessage failed:",
-      err,
-      msg
-    );
+    container.appendChild(body);
+    messagesDiv.appendChild(container);
+  } catch (e) {
+    console.error("render error", e);
   }
 }
+
 /* -------------------- */
-/* AUTO LOGIN */
+/* EVENTS */
+/* -------------------- */
+
+joinBtn.onclick = joinRoom;
+sendBtn.onclick = sendMessage;
+
+messageInput.onkeydown = (e) => {
+  if (e.key === "Enter") sendMessage();
+};
+
+/* -------------------- */
+/* INIT */
 /* -------------------- */
 
 (async () => {
-
-  const loaded =
-    await loadCurrentUser();
-  const {
-    data: existingRoom
-  } = await supabaseClient
-    .from("rooms")
-    .select("*")
-    .eq("room_name", room)
-    .single();
-
-  if (!existingRoom) {
-
-    await createRoom(room);
-  }
-  if (loaded) {
-
-    console.log(
-      "Logged in as",
-      currentProfile.username
-    );
-  }
+  const loaded = await loadCurrentUser();
+  if (loaded) setStatus("Session restored", "green");
 })();
