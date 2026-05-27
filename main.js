@@ -454,6 +454,21 @@ messageInput.onkeydown = (e) => {
   if (e.key === "Enter") sendMessage();
 };
 
+signupBtn.onclick = async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+  const username = usernameInput.value.trim();
+
+  await signUp(email, password, username);
+};
+
+loginBtn.onclick = async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  await login(email, password);
+};
+
 /* -------------------- */
 /* INIT */
 /* -------------------- */
