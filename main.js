@@ -138,7 +138,7 @@ async function loadCurrentUser() {
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .single().catch(() => null);
 
   if (pError || !profile) {
     setStatus("Profile missing for user", "red");
