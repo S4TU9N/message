@@ -235,25 +235,43 @@ async function joinRoom() {
 
 async function sendMessage() {
   const content = messageInput.value.trim();
-  if (!content || !currentUser) return;
 
-  const { error } =
-    await supabaseClient.from("messages").insert([
-      {
-        room,
-        user_id: currentUser.id,
-        username: currentProfile.username,
-        color: currentProfile.color,
-        content
-      }
-    ]);
+  if (!content || !currentUser) {
+    setStatus("Missing content or user", "red");
+    return;
+  }
+
+  const messageData = {
+    room: room,
+    user_id: currentUser.id,
+    username: currentProfile.username,
+    color: currentProfile.color,
+    content: content
+  };
+
+  console.log("SENDING:", messageData);
+
+  const { data, error } =
+    await supabaseClient
+      .from("messages")
+      .insert([messageData])
+      .select();
+
+  console.log("SEND DATA:", data);
+  console.log("SEND ERROR:", error);
 
   if (error) {
-    setStatus("Send failed", "red");
+    setStatus(
+      "Send failed: " + error.message,
+      "red"
+    );
+
     return;
   }
 
   messageInput.value = "";
+
+  setStatus("Message sent", "green");
 }
 
 /* -------------------- */
