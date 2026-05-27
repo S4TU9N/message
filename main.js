@@ -134,6 +134,25 @@ async function loadCurrentUser() {
 
   currentUser = session.user;
 
+  const { data: profile, error: pError } =
+    await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single().catch(() => null);
+
+  if (pError || !profile) {
+    setStatus("Profile missing for user", "red");
+    return false;
+  }
+
+  currentProfile = profile;
+
+  setStatus("Logged in as " + profile.username, "green");
+
+  return true;
+}
+
 /* -------------------- */
 /* ROOM */
 /* -------------------- */
