@@ -118,39 +118,21 @@ async function login(email, password) {
 }
 
 async function loadCurrentUser() {
-  const { data: { user }, error } =
-    await supabaseClient.auth.getUser();
+  const { data, error } = await supabaseClient.auth.getSession();
 
   if (error) {
-    setStatus("Auth error: " + error.message, "red");
+    setStatus("Session error: " + error.message, "red");
     return false;
   }
 
-  if (!user) {
-    setStatus("No active session", "gray");
+  const session = data.session;
+
+  if (!session) {
+    setStatus("Not logged in", "gray");
     return false;
   }
 
-  currentUser = user;
-
-  const { data: profile, error: pError } =
-    await supabaseClient
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single().catch(() => null);
-
-  if (pError || !profile) {
-    setStatus("Profile missing for user", "red");
-    return false;
-  }
-
-  currentProfile = profile;
-
-  setStatus("Logged in as " + profile.username, "green");
-
-  return true;
-}
+  currentUser = session.user;
 
 /* -------------------- */
 /* ROOM */
