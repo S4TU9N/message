@@ -1,5 +1,4 @@
-const SUPABASE_URL =
-  "https://kbpcgdsfqosgeoaanghf.supabase.co";
+const SUPABASE_URL = "https://kbpcgdsfqosgeoaanghf.supabase.co";
 
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujg";
@@ -12,37 +11,47 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-setStatus("App loading...");
-
-supabaseClient.auth.getSession().then(({ data }) => {
-  if (data.session) {
-    setStatus("Logged in: " + data.session.user.email, "green");
-  } else {
-    setStatus("Not logged in", "gray");
-  }
-});
-
 /* -------------------- */
 /* STATUS */
 /* -------------------- */
 
 function setStatus(msg, color = "black") {
   const box = document.getElementById("statusBox");
-
-  if (!box) {
-    console.warn("statusBox missing:", msg);
-    return;
-  }
+  if (!box) return;
 
   box.textContent = msg;
   box.style.color = color;
   box.style.fontWeight = "bold";
-  box.style.padding = "10px";
-  box.style.borderBottom = "1px solid #ccc";
 }
 
 /* -------------------- */
-/* ELEMENTS */
+/* STATE */
+/* -------------------- */
+
+let currentUser = null;
+let currentProfile = null;
+let room = "";
+let initialLoadDone = false;
+let activeChannel = null;
+
+/* -------------------- */
+/* INIT AUTH */
+/* -------------------- */
+
+(async () => {
+  const { data } = await supabaseClient.auth.getSession();
+
+  if (data.session) {
+    currentUser = data.session.user;
+    await loadCurrentUser();
+    setStatus("Session restored", "green");
+  } else {
+    setStatus("Not logged in", "gray");
+  }
+})();
+
+/* -------------------- */
+/* DOM */
 /* -------------------- */
 
 const setupDiv = document.getElementById("setup");
@@ -61,18 +70,6 @@ const messagesDiv = document.getElementById("messages");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
 
-const messageSound = new Audio("ping.mp3");
-
-/* -------------------- */
-/* STATE */
-/* -------------------- */
-
-let currentUser = null;
-let currentProfile = null;
-let room = "";
-let initialLoadDone = false;
-let activeChannel = null;
-
 /* -------------------- */
 /* AUTH */
 /* -------------------- */
@@ -87,41 +84,20 @@ async function signUp(email, password, username) {
 
   if (error) {
     setStatus("Signup failed: " + error.message, "red");
-    return false;
+    return;
   }
 
-  setStatus("Account created", "green");
-if (data.user) {
-
-    const { error: profileError } =
-      await supabaseClient
-        .from("profiles")
-        .insert([
-          {
-            id: data.user.id,
-            username: username,
-            color: "#6c8cff"
-          }
-        ]);
-
-    if (profileError) {
-
-      setStatus(
-        "Profile creation failed: " +
-        profileError.message,
-        "red"
-      );
-
-      return false;
-    }
+  if (data.user) {
+    await supabaseClient.from("profiles").insert([
+      {
+        id: data.user.id,
+        username,
+        color: "#6c8cff"
+      }
+    ]);
   }
 
-  setStatus(
-    "Signup successful",
-    "green"
-  );
-
-  return true;
+  setStatus("Signup complete", "green");
 }
 
 async function login(email, password) {
@@ -134,50 +110,28 @@ async function login(email, password) {
 
   if (error) {
     setStatus("Login failed: " + error.message, "red");
-    return false;
+    return;
   }
 
-  const loaded = await loadCurrentUser();
-
-  if (loaded) {
-    setStatus("Logged in successfully", "green");
-  }
-
-  return true;
+  await loadCurrentUser();
+  setStatus("Logged in", "green");
 }
 
 async function loadCurrentUser() {
-  const { data, error } = await supabaseClient.auth.getSession();
-
-  if (error) {
-    setStatus("Session error: " + error.message, "red");
-    return false;
-  }
-
+  const { data } = await supabaseClient.auth.getSession();
   const session = data.session;
 
-  if (!session) {
-    setStatus("Not logged in", "gray");
-    return false;
-  }
+  if (!session) return false;
 
   currentUser = session.user;
 
-  const { data: profile, error: pError } =
-    await supabaseClient
-      .from("profiles")
-      .select("*")
-      .eq("id", currentUser.id)
-      .single();
+  const { data: profile } = await supabaseClient
+    .from("profiles")
+    .select("*")
+    .eq("id", currentUser.id)
+    .single();
 
-  if (pError || !profile) {
-    setStatus("Profile missing for user", "red");
-    return false;
-  }
-
-  currentProfile = profile;
-
-  setStatus("Logged in as " + profile.username, "green");
+  currentProfile = profile || null;
 
   return true;
 }
@@ -197,27 +151,15 @@ async function createRoom(name) {
   ]);
 }
 
-/* -------------------- */
-/* JOIN ROOM */
-/* -------------------- */
-
 async function joinRoom() {
   room = roomInput.value.trim();
   if (!room) return;
 
-  const loaded = await loadCurrentUser();
-  if (!loaded) {
+  const ok = await loadCurrentUser();
+  if (!ok) {
     setStatus("Login required", "red");
     return;
   }
-
-  const url =
-    window.location.origin +
-    window.location.pathname +
-    "?room=" +
-    encodeURIComponent(room);
-
-  history.replaceState({}, "", url);
 
   setupDiv.classList.add("hidden");
   chatDiv.classList.remove("hidden");
@@ -226,7 +168,7 @@ async function joinRoom() {
   await loadMessages();
   subscribeMessages();
 
-  setStatus("Joined room: " + room, "green");
+  setStatus("Joined " + room, "green");
 }
 
 /* -------------------- */
@@ -236,42 +178,27 @@ async function joinRoom() {
 async function sendMessage() {
   const content = messageInput.value.trim();
 
-  if (!content || !currentUser) {
-    setStatus("Missing content or user", "red");
+  if (!content || !currentUser || !currentProfile) {
+    setStatus("Cannot send message", "red");
     return;
   }
 
-  const messageData = {
-    room: room,
-    user_id: currentUser.id,
-    username: currentProfile.username,
-    color: currentProfile.color,
-    content: content
-  };
-
-  console.log("SENDING:", messageData);
-
-  const { data, error } =
-    await supabaseClient
-      .from("messages")
-      .insert([messageData])
-      .select();
-
-  console.log("SEND DATA:", data);
-  console.log("SEND ERROR:", error);
+  const { error } = await supabaseClient.from("messages").insert([
+    {
+      room,
+      user_id: currentUser.id,
+      username: currentProfile.username,
+      color: currentProfile.color,
+      content
+    }
+  ]);
 
   if (error) {
-    setStatus(
-      "Send failed: " + error.message,
-      "red"
-    );
-
+    setStatus("Send failed: " + error.message, "red");
     return;
   }
 
   messageInput.value = "";
-
-  setStatus("Message sent", "green");
 }
 
 /* -------------------- */
@@ -281,25 +208,15 @@ async function sendMessage() {
 async function loadMessages() {
   messagesDiv.innerHTML = "";
 
-  const cutoff =
-    new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { data } = await supabaseClient
+    .from("messages")
+    .select("*")
+    .eq("room", room)
+    .order("created_at", { ascending: true });
 
-  const { data, error } =
-    await supabaseClient
-      .from("messages")
-      .select("*")
-      .eq("room", room)
-      .gt("created_at", cutoff)
-      .order("created_at", { ascending: true });
+  if (!data) return;
 
-  if (error) {
-    setStatus("Load failed", "red");
-    return;
-  }
-
-  for (const msg of data) {
-    await addMessage(msg, false);
-  }
+  data.forEach(m => renderMessage(m, false));
 
   initialLoadDone = true;
 }
@@ -314,191 +231,131 @@ function subscribeMessages() {
   }
 
   activeChannel = supabaseClient
-  .channel("chat-" + room)
-  .on(
-    "postgres_changes",
-    {
-      event: "INSERT",
-      schema: "public",
-      table: "messages",
-      filter: `room=eq.${room}`
-    },
-    async (payload) => {
-      console.log("Realtime message:", payload);
-      await addMessage(payload.new, initialLoadDone);
-    }
-  )
-  .subscribe((status) => {
-    console.log("Realtime status:", status);
-
-    if (status === "SUBSCRIBED") {
-      setStatus("Realtime connected", "green");
-    }
-  });
+    .channel("chat-" + room)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter: `room=eq.${room}`
+      },
+      payload => renderMessage(payload.new, initialLoadDone)
+    )
+    .subscribe();
 }
 
 /* -------------------- */
-/* TOKENIZER */
+/* TOKENIZE */
 /* -------------------- */
 
-function tokenizeMessage(text) {
+function tokenize(text) {
   const regex = /(https?:\/\/[^\s]+)|@([a-zA-Z0-9_]+)/g;
-  const tokens = [];
+
+  const out = [];
   let last = 0;
 
   for (const m of text.matchAll(regex)) {
     if (m.index > last) {
-      tokens.push({ type: "text", value: text.slice(last, m.index) });
+      out.push({ type: "text", value: text.slice(last, m.index) });
     }
 
-    if (m[1]) tokens.push({ type: "url", value: m[1] });
-    if (m[2]) tokens.push({ type: "mention", value: m[2] });
+    if (m[1]) out.push({ type: "url", value: m[1] });
+    if (m[2]) out.push({ type: "mention", value: m[2] });
 
     last = m.index + m[0].length;
   }
 
   if (last < text.length) {
-    tokens.push({ type: "text", value: text.slice(last) });
+    out.push({ type: "text", value: text.slice(last) });
   }
 
-  return tokens;
+  return out;
 }
 
 /* -------------------- */
-/* URL HELPERS */
+/* EMBEDS (kept minimal hooks) */
 /* -------------------- */
 
-function safeURL(url) {
+function safeURL(u) {
   try {
-    const u = new URL(url);
-    return (u.protocol === "http:" || u.protocol === "https:") ? u : null;
+    const url = new URL(u);
+    return url.protocol.startsWith("http") ? url : null;
   } catch {
     return null;
   }
 }
 
 /* -------------------- */
-/* EMBEDS */
+/* RENDER MESSAGE (FIXED STRUCTURE) */
 /* -------------------- */
 
-function isYouTube(url) {
-  return url.includes("youtube.com") || url.includes("youtu.be");
-}
+function renderMessage(msg) {
+  const wrapper = document.createElement("div");
+  wrapper.style.display = "block";
+  wrapper.style.margin = "6px 0";
 
-function getYouTubeID(url) {
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes("youtu.be")) return u.pathname.slice(1);
-    return u.searchParams.get("v");
-  } catch {
-    return null;
+  const header = document.createElement("div");
+
+  const name = document.createElement("span");
+  name.textContent = msg.username + " ";
+  name.style.color = msg.color;
+
+  const time = document.createElement("span");
+  if (msg.created_at) {
+    time.textContent =
+      " • " +
+      new Date(msg.created_at).toLocaleTimeString();
   }
-}
+  time.style.opacity = "0.6";
+  time.style.fontSize = "12px";
 
-function createYouTubeEmbed(url) {
-  const id = getYouTubeID(url);
-  if (!id) return null;
+  header.appendChild(name);
+  header.appendChild(time);
 
-  const iframe = document.createElement("iframe");
-  iframe.src = `https://www.youtube.com/embed/${id}`;
-  iframe.width = "320";
-  iframe.height = "180";
-  iframe.allowFullscreen = true;
-  iframe.style.border = "none";
-  return iframe;
-}
+  const body = document.createElement("div");
+  body.style.display = "block";
 
-function isTenor(url) {
-  return url.includes("tenor.com/view/");
-}
+  for (const part of tokenize(msg.content)) {
+    if (part.type === "text") {
+      body.appendChild(document.createTextNode(part.value));
+    }
 
-function createTenorEmbed(url) {
-  const match = url.match(/-(\d+)(\?.*)?$/);
-  if (!match) return null;
+    if (part.type === "url") {
+      const safe = safeURL(part.value);
+      if (!safe) continue;
 
-  const iframe = document.createElement("iframe");
-  iframe.src = `https://tenor.com/embed/${match[1]}`;
-  iframe.width = "320";
-  iframe.height = "320";
-  iframe.style.border = "none";
-  return iframe;
-}
+      const a = document.createElement("a");
+      a.href = safe.href;
+      a.textContent = safe.href;
+      a.target = "_blank";
 
-function isImage(url) {
-  return /\.(png|jpg|jpeg|gif|webp)/i.test(url);
-}
+      body.appendChild(a);
 
-function createImageEmbed(url) {
-  const img = document.createElement("img");
-  img.src = url;
-  img.style.maxWidth = "300px";
-  return img;
-}
-
-function createLink(url) {
-  const a = document.createElement("a");
-  a.href = url;
-  a.textContent = url;
-  a.target = "_blank";
-  return a;
-}
-
-/* -------------------- */
-/* MESSAGE RENDER */
-/* -------------------- */
-
-async function addMessage(msg, playSound = true) {
-  try {
-    const container = document.createElement("div");
-
-    const time = new Date(msg.created_at);
-    container.textContent = "";
-
-    const header = document.createElement("span");
-    header.style.color = msg.color;
-    header.textContent = msg.username + " ";
-    container.appendChild(header);
-
-    const body = document.createElement("span");
-
-    for (const part of tokenizeMessage(msg.content)) {
-      if (part.type === "text") {
-        body.appendChild(document.createTextNode(part.value));
+      if (isYouTube?.(safe.href)) {
+        const embed = createYouTubeEmbed?.(safe.href);
+        if (embed) body.appendChild(embed);
       }
 
-      if (part.type === "url") {
-        const safe = safeURL(part.value);
-        if (!safe) continue;
-
-        body.appendChild(createLink(safe.href));
-
-        if (isYouTube(safe.href)) {
-          const embed = createYouTubeEmbed(safe.href);
-          if (embed) body.appendChild(embed);
-        }
-
-        if (isTenor(safe.href)) {
-          const embed = createTenorEmbed(safe.href);
-          if (embed) body.appendChild(embed);
-        }
-
-        if (isImage(safe.href)) {
-          body.appendChild(createImageEmbed(safe.href));
-        }
-      }
-
-      if (part.type === "mention") {
-        const m = document.createElement("span");
-        m.textContent = "@" + part.value;
-        body.appendChild(m);
+      if (isTenor?.(safe.href)) {
+        const embed = createTenorEmbed?.(safe.href);
+        if (embed) body.appendChild(embed);
       }
     }
 
-    container.appendChild(body);
-    messagesDiv.appendChild(container);
-  } catch (e) {
-    console.error("render error", e);
+    if (part.type === "mention") {
+      const m = document.createElement("span");
+      m.textContent = "@" + part.value;
+      m.style.color = "#4aa3ff";
+      body.appendChild(m);
+    }
   }
+
+  wrapper.appendChild(header);
+  wrapper.appendChild(body);
+
+  messagesDiv.appendChild(wrapper);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
 /* -------------------- */
@@ -506,50 +363,22 @@ async function addMessage(msg, playSound = true) {
 /* -------------------- */
 
 joinBtn.onclick = joinRoom;
+
 sendBtn.onclick = sendMessage;
 
 messageInput.onkeydown = (e) => {
   if (e.key === "Enter") sendMessage();
 };
 
-signupBtn.onclick = async () => {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-  const username = usernameInput.value.trim();
+signupBtn.onclick = () =>
+  signUp(
+    emailInput.value.trim(),
+    passwordInput.value,
+    usernameInput.value.trim()
+  );
 
-  await signUp(email, password, username);
-};
-
-loginBtn.onclick = async () => {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-
-  await login(email, password);
-};
-
-/* -------------------- */
-/* INIT */
-/* -------------------- */
-
-(async () => {
-  try {
-    const { data, error } = await supabaseClient.auth.getSession();
-
-    if (error) {
-      console.warn("Session init warning:", error.message);
-      setStatus("Auth initializing...", "gray");
-      return;
-    }
-
-    if (data.session) {
-      currentUser = data.session.user;
-      await loadCurrentUser();
-      setStatus("Session restored", "green");
-    } else {
-      setStatus("Not logged in", "gray");
-    }
-  } catch (e) {
-    console.warn(e);
-    setStatus("Auth not ready", "gray");
-  }
-})();
+loginBtn.onclick = () =>
+  login(
+    emailInput.value.trim(),
+    passwordInput.value
+  );
