@@ -2,7 +2,7 @@ const SUPABASE_URL =
   "https://kbpcgdsfqosgeoaanghf.supabase.co";
 
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcW9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADqXw3jnXakxZFH0MwTP5S9-t3vbzhujg";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticGNnZHNmcG9zZ2VvYWFuZ2hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDQ0NDEsImV4cCI6MjA5NDMyMDQ0MX0.rAZYev_j43ADQXw3jnXakxZFH0MwTP5S9-t3vbzhujg";
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
@@ -65,18 +65,62 @@ const messageSound = new Audio("ping.mp3");
 /* AUTH STATE */
 /* -------------------- */
 
+
+const authSection =
+  document.getElementById("authSection");
+
+const roomSection =
+  document.getElementById("roomSection");
+
+const logoutBtn =
+  document.getElementById("logoutBtn");
+
 async function loadSession() {
   const { data } = await supabaseClient.auth.getSession();
   return data.session || null;
+}
+
+function updateAuthUI() {
+
+  if (currentUser) {
+
+    authSection.style.display =
+      "none";
+
+    roomSection.style.display =
+      "block";
+
+    setStatus(
+      `Logged in as ${currentProfile.username}`,
+      "lime"
+    );
+
+  } else {
+
+    authSection.style.display =
+      "block";
+
+    roomSection.style.display =
+      "none";
+
+    setStatus(
+      "Not logged in",
+      "orange"
+    );
+  }
 }
 
 async function loadCurrentUser() {
   const session = await loadSession();
 
   if (!session) {
-    currentUser = null;
-    currentProfile = null;
-    return false;
+
+  currentUser = null;
+  currentProfile = null;
+
+  updateAuthUI();
+
+  return false;
   }
 
   currentUser = session.user;
@@ -93,6 +137,7 @@ async function loadCurrentUser() {
   }
 
   currentProfile = profile;
+  updateAuthUI();
   return true;
 }
 
@@ -122,6 +167,19 @@ async function signUp(email, password, username) {
   }
 
   setStatus("Signup complete (check email if required)", "green");
+}
+
+async function logout() {
+
+  await supabaseClient.auth.signOut();
+
+  currentUser = null;
+  currentProfile = null;
+
+  updateAuthUI();
+
+  setupDiv.classList.remove("hidden");
+  chatDiv.classList.add("hidden");
 }
 
 async function login(email, password) {
@@ -445,6 +503,8 @@ async function addMessage(msg, playSound = true) {
 /* EVENTS */
 /* -------------------- */
 
+logoutBtn.onclick = logout;
+
 signupBtn.onclick = () =>
   signUp(
     emailInput.value,
@@ -471,5 +531,9 @@ messageInput.onkeydown = e => {
 
 (async () => {
   const ok = await loadCurrentUser();
-  if (ok) setStatus("Session restored", "green");
+  updateAuthUI();
+
+  if (ok) {
+      setStatus("Session restored", "green");
+  }
 })();

@@ -20,27 +20,61 @@
   <!-- AUTH / SETUP SCREEN -->
   <div id="setup">
 
-    <h1>Chat</h1>
+  <h1>sahibchat</h1>
 
-    <input id="emailInput" type="email" placeholder="Email" />
+  <!-- AUTH -->
+  <div id="authSection">
 
-    <input id="passwordInput" type="password" placeholder="Password" />
+    <input
+      id="emailInput"
+      type="email"
+      placeholder="Email"
+    >
 
-    <input id="usernameInput" type="text" placeholder="Username" maxlength="20" />
+    <input
+      id="passwordInput"
+      type="password"
+      placeholder="Password"
+    >
 
-    <div style="margin-top:10px;">
-      <button id="signupBtn">Sign Up</button>
-      <button id="loginBtn">Login</button>
-    </div>
+    <input
+      id="usernameInput"
+      type="text"
+      placeholder="Username"
+    >
 
-    <hr />
+    <button id="signupBtn">
+      Sign Up
+    </button>
 
-    <input id="roomInput" type="text" placeholder="Room name" />
-
-    <button id="joinBtn">Join Room</button>
+    <button id="loginBtn">
+      Login
+    </button>
 
   </div>
 
+  <!-- ROOM JOIN -->
+  <div id="roomSection">
+
+    <input
+      id="roomInput"
+      type="text"
+      placeholder="Room Name"
+    >
+
+    <button id="joinBtn">
+      Join Room
+    </button>
+
+    <button id="logoutBtn">
+      Logout
+    </button>
+
+  </div>
+
+  <div id="statusBox"></div>
+
+</div>
   <!-- CHAT SCREEN -->
   <div id="chat" class="hidden">
 
