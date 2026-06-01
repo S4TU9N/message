@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chat</title>
+  <title>sahibchat</title>
 
   <link rel="stylesheet" href="style.css">
 
@@ -12,80 +12,53 @@
 
 <body>
 
-  <!-- STATUS BAR (important for debugging without devtools) -->
+  <!-- STATUS (SINGLE INSTANCE ONLY) -->
   <div id="statusBox" style="padding:8px; font-family: monospace;">
     idle
   </div>
 
-  <!-- AUTH / SETUP SCREEN -->
+  <!-- SETUP (AUTH + ROOMS) -->
   <div id="setup">
 
-  <h1>sahibchat</h1>
+    <h1>sahibchat</h1>
 
-  <!-- AUTH -->
-  <div id="authSection">
+    <!-- AUTH SECTION -->
+    <div id="authSection">
 
-    <input
-      id="emailInput"
-      type="email"
-      placeholder="Email"
-    >
+      <input id="emailInput" type="email" placeholder="Email">
 
-    <input
-      id="passwordInput"
-      type="password"
-      placeholder="Password"
-    >
+      <input id="passwordInput" type="password" placeholder="Password">
 
-    <input
-      id="usernameInput"
-      type="text"
-      placeholder="Username"
-    >
+      <input id="usernameInput" type="text" placeholder="Username">
 
-    <button id="signupBtn">
-      Sign Up
-    </button>
+      <button id="signupBtn">Sign Up</button>
+      <button id="loginBtn">Login</button>
 
-    <button id="loginBtn">
-      Login
-    </button>
+    </div>
+
+    <!-- ROOM SECTION -->
+    <div id="roomSection">
+
+      <input id="roomInput" type="text" placeholder="Room Name">
+
+      <button id="joinBtn">Join Room</button>
+      <button id="logoutBtn">Logout</button>
+
+      <!-- OPEN ROOMS LIST (REQUIRED BY JS) -->
+      <div id="openRooms"></div>
+
+    </div>
 
   </div>
 
-  <!-- ROOM JOIN -->
-  <div id="roomSection">
-
-    <input
-      id="roomInput"
-      type="text"
-      placeholder="Room Name"
-    >
-
-    <button id="joinBtn">
-      Join Room
-    </button>
-
-    <button id="logoutBtn">
-      Logout
-    </button>
-
-  </div>
-
-  <div id="statusBox"></div>
-
-</div>
-  <!-- CHAT SCREEN -->
+  <!-- CHAT VIEW -->
   <div id="chat" class="hidden">
 
-    <div id="messages"
-         style="height:400px; overflow-y:auto; padding:10px;">
-    </div>
+  <div id="messages"></div>
 
     <div id="inputBar">
 
       <input id="messageInput" type="text" placeholder="Message..." />
-
       <button id="sendBtn">Send</button>
 
     </div>

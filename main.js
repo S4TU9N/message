@@ -26,6 +26,14 @@ let room = "";
 let activeChannel = null;
 let initialLoadDone = false;
 
+
+let roomReloadTimeout = null;
+
+function scheduleRoomReload() {
+  clearTimeout(roomReloadTimeout);
+  roomReloadTimeout = setTimeout(loadOpenRooms, 200);
+}
+
 /* -------------------- */
 /* UI */
 /* -------------------- */
@@ -81,34 +89,25 @@ async function loadSession() {
 }
 
 function updateAuthUI() {
+  const roomSection = document.getElementById("roomSection");
+  const chat = document.getElementById("chat");
 
-  if (currentUser) {
-
-    authSection.style.display =
-      "none";
-
-    roomSection.style.display =
-      "block";
-
-    setStatus(
-      `Logged in as ${currentProfile.username}`,
-      "lime"
-    );
-
-  } else {
-
-    authSection.style.display =
-      "block";
-
-    roomSection.style.display =
-      "none";
-
-    setStatus(
-      "Not logged in",
-      "orange"
-    );
+  if (!currentUser) {
+    authSection.style.display = "block";
+    roomSection.style.display = "none";
+    chat.style.display = "none";
+    return;
   }
+
+  const usernameEl = document.getElementById("usernameDisplay");
+  if (usernameEl) {
+    usernameEl.textContent = currentProfile?.username || "User";
+  }
+  authSection.style.display = "none";
+  roomSection.style.display = "block";
+  chat.style.display = "block";
 }
+
 
 async function loadCurrentUser() {
   const session = await loadSession();
@@ -129,11 +128,28 @@ async function loadCurrentUser() {
     .from("profiles")
     .select("*")
     .eq("id", currentUser.id)
-    .single();
+    .maybeSingle();
 
   if (error || !profile) {
-    setStatus("Profile missing", "red");
-    return false;
+    const { data: created, error: insertError } =
+      await supabaseClient
+        .from("profiles")
+        .upsert({
+          id: currentUser.id,
+          username: currentUser.email.split("@")[0],
+          color: "#6c8cff"
+        })
+        .select()
+        .single();
+
+    if (insertError) {
+      console.log(insertError);
+      return false;
+    }
+
+    currentProfile = created;
+    updateAuthUI();
+    return true;
   }
 
   currentProfile = profile;
@@ -198,20 +214,69 @@ async function login(email, password) {
 
   const ok = await loadCurrentUser();
 
+  if (!ok) {
+    setStatus("Failed to load profile (check RLS / network)", "red");
+    currentProfile = null;
+    return;
+  }
+
+  console.log("session:", session);
+  console.log("user:", currentUser);
+  console.log("profile:", profile, error);
   if (ok) setStatus("Logged in", "green");
+  updateAuthUI();
 }
 
 /* -------------------- */
 /* ROOMS */
 /* -------------------- */
 
+async function loadOpenRooms() {
+  console.log("Loading open rooms...");
+  const { data, error } = await supabaseClient
+    .from("rooms")
+    .select("*")
+    .order("last_active", { ascending: false });
+  console.log("rooms:", data);
+  if (error) {
+    setStatus(error.message, "red");
+    return;
+  }
+
+  const container = document.getElementById("openRooms");
+  if (!container) {
+    setStatus("Missing openRooms div", "red");
+    return;
+  }
+
+  container.innerHTML = "";
+
+  data.forEach(roomRow => {
+    const btn = document.createElement("button");
+    btn.textContent = roomRow.name;
+
+    btn.onclick = () => {
+      roomInput.value = roomRow.name;
+      joinRoom();
+    };
+
+    container.appendChild(btn);
+  });
+}
+
 async function createRoom(name) {
   if (!currentUser) return;
 
-  await supabaseClient.from("rooms").upsert({
-    room_name: name,
-    owner_id: currentUser.id
+  const { error } = await supabaseClient.from("rooms").upsert({
+    name: name,
+    owner_id: currentUser.id,
+    last_active: new Date().toISOString(),
+    user_count: 1
   });
+
+  if (error) {
+    console.log("createRoom error:", error);
+  }
 }
 
 /* -------------------- */
@@ -222,10 +287,15 @@ async function joinRoom() {
   room = roomInput.value.trim();
   if (!room) return;
 
-  const ok = await loadCurrentUser();
-  if (!ok) {
+  if (!currentUser) {
     setStatus("Login required", "red");
     return;
+  }
+
+  if (!currentProfile) {
+    setStatus("Loading profile...", "gray");
+    const ok = await loadCurrentUser();
+    if (!ok || !currentProfile) return;
   }
 
   history.replaceState(
@@ -365,6 +435,24 @@ function tokenizeMessage(text) {
 /* HELPERS */
 /* -------------------- */
 
+function timeAgo(date) {
+  const diff = (Date.now() - date.getTime()) / 1000;
+
+  if (diff < 60) return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function wrapEmbed(el) {
+  const d = document.createElement("div");
+  d.style.display = "block";
+  d.style.marginTop = "6px";
+  d.appendChild(el);
+  return d;
+}
+
 function safeURL(url) {
   try {
     const u = new URL(url);
@@ -448,11 +536,10 @@ async function addMessage(msg, playSound = true) {
   header.innerHTML =
     `<b style="color:${msg.color}">
       ${msg.username}
-     </b>
-     <span style="color:#888;font-size:12px">
-      ${time.toLocaleTimeString()}
-     </span>`;
-
+    </b>
+    <span style="color:#888;font-size:12px">
+      ${timeAgo(time)}
+    </span>`;
   container.appendChild(header);
 
   const body = document.createElement("div");
@@ -479,12 +566,12 @@ async function addMessage(msg, playSound = true) {
 
       if (isYouTube(safe.href)) {
         const e = createYouTubeEmbed(safe.href);
-        if (e) body.appendChild(e);
+        if (e) body.appendChild(wrapEmbed(e));
       }
 
       if (isTenor(safe.href)) {
         const e = createTenorEmbed(safe.href);
-        if (e) body.appendChild(e);
+        if (e) body.appendChild(wrapEmbed(e));
       }
 
       if (isImage(safe.href)) {
@@ -530,10 +617,26 @@ messageInput.onkeydown = e => {
 /* -------------------- */
 
 (async () => {
+  setStatus("Loading session...", "gray");
+
   const ok = await loadCurrentUser();
+
+  await loadOpenRooms(); 
+
   updateAuthUI();
 
   if (ok) {
-      setStatus("Session restored", "green");
+    setStatus("Session restored", "green");
+  } else {
+    setStatus("Not logged in", "orange");
   }
 })();
+
+supabaseClient
+  .channel("rooms-live")
+  .on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "rooms" },
+    () => scheduleRoomReload()
+  )
+  .subscribe();
