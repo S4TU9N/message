@@ -163,6 +163,21 @@ async function loadCurrentUser() {
 
 async function signUp(email, password, username) {
   setStatus("Signing up...", "gray");
+  const regex = /^[\w-]+$/;
+  if (!regex.test(username)) {
+    setStatus("Username must be alphanumeric, or contain underscores or hyphens", "red")
+    return;
+  }
+  const { data: existingUser } = await supabaseClient
+    .from("profiles")
+    .select("id")
+    .eq("username", username)
+    .maybeSingle();
+
+  if (existingUser) {
+    setStatus("Username taken", "red");
+    return;
+  }
 
   const { data, error } = await supabaseClient.auth.signUp({
     email,
@@ -320,7 +335,10 @@ async function joinRoom() {
 
 async function sendMessage() {
   const content = messageInput.value.trim();
-
+  if (content.length > 1000) {
+    setStatus("Message is too long", "red");
+    return;
+  }
   if (!content || !currentUser || !currentProfile) return;
 
   const messageData = {
