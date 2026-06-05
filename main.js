@@ -556,8 +556,13 @@ async function addMessage(msg, playSound = true) {
       ${msg.username}
     </b>
     <span style="color:#888;font-size:12px">
-      ${timeAgo(time)}
-    </span>`;
+      ${time.toLocaleTimeString("en-US", {
+        timeZone: "America/Toronto",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      })}
+    </span>
   container.appendChild(header);
 
   const body = document.createElement("div");
