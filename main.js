@@ -562,7 +562,7 @@ async function addMessage(msg, playSound = true) {
         minute: "2-digit",
         hour12: false
       })}
-    </span>
+    </span>`;
   container.appendChild(header);
 
   const body = document.createElement("div");
