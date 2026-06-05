@@ -557,7 +557,7 @@ async function addMessage(msg, playSound = true) {
     </b>
     <span style="color:#888;font-size:12px">
       ${time.toLocaleTimeString("en-US", {
-        timeZone: "America/Toronto",
+        timeZone: "America/Los_Angeles",
         hour: "2-digit",
         minute: "2-digit",
         hour12: false
