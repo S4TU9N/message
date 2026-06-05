@@ -248,10 +248,14 @@ async function login(email, password) {
 
 async function loadOpenRooms() {
   console.log("Loading open rooms...");
+  const cutoff = new Date(
+    Date.now() - 30 * 60 * 1000
+  ).toISOString();
   const { data, error } = await supabaseClient
     .from("rooms")
     .select("*")
-    .order("last_active", { ascending: false });
+    .order("last_active", { ascending: false })
+    .gt("last_active", cutoff);
   console.log("rooms:", data);
   if (error) {
     setStatus(error.message, "red");
@@ -268,7 +272,21 @@ async function loadOpenRooms() {
 
   data.forEach(roomRow => {
     const btn = document.createElement("button");
-    btn.textContent = roomRow.name;
+
+    const lastActive = new Date(roomRow.last_active);
+    
+    const formattedTime =
+      lastActive.toLocaleTimeString("en-CA", {
+        timeZone: "America/Toronto",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    const minutesAgo = Math.floor(
+      (Date.now() - lastActive.getTime()) / 60000
+    );
+
+    btn.textContent =
+      `Room Name: ${roomRow.name} | Last Active: ${formattedTime}(${minutesAgo}m ago)`;
 
     btn.onclick = () => {
       roomInput.value = roomRow.name;
@@ -349,15 +367,21 @@ async function sendMessage() {
     content
   };
 
-  const { error } =
-    await supabaseClient
-      .from("messages")
-      .insert(messageData);
+  const { error } = await supabaseClient
+  .from("messages")
+  .insert(messageData);
 
   if (error) {
     setStatus(error.message, "red");
     return;
   }
+
+  await supabaseClient
+    .from("rooms")
+    .update({
+      last_active: new Date().toISOString()
+    })
+    .eq("name", room);
 
   messageInput.value = "";
 }
@@ -556,11 +580,10 @@ async function addMessage(msg, playSound = true) {
       ${msg.username}
     </b>
     <span style="color:#888;font-size:12px">
-      ${time.toLocaleTimeString("en-US", {
-        timeZone: "America/Anchorage",
+      ${time.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false
+        hour12: true
       })}
     </span>`;
   container.appendChild(header);
