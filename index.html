@@ -13,42 +13,47 @@
 <body>
 
   <!-- STATUS (SINGLE INSTANCE ONLY) -->
-  <div id="statusBox" style="padding:8px; font-family: monospace;">
+  <div id="statusBox" style="padding:8px; font-family: monospace; z-index: 1000;">
     idle
   </div>
 
   <!-- SETUP (AUTH + ROOMS) -->
-  <div id="setup">
+    <div id="setup">
 
-    <h1>saturnchat</h1>
+      <div class="setup-card">
 
-    <!-- AUTH SECTION -->
-    <div id="authSection">
+          <h1>SaturnChat</h1>
+          <p class="subtitle">Simple chatroom site</p>
 
-      <input id="emailInput" type="email" placeholder="Email">
+          <div id="authSection">
 
-      <input id="passwordInput" type="password" placeholder="Password">
+              <input id="emailInput" type="email" placeholder="Email">
 
-      <input id="usernameInput" type="text" placeholder="Username">
+              <input id="passwordInput" type="password" placeholder="Password">
 
-      <button id="signupBtn">Sign Up</button>
-      <button id="loginBtn">Login</button>
-      <h2>Active Rooms</h2>
-    </div>
-    
-    
-    <!-- ROOM SECTION -->
-    <div id="roomSection">
+              <input id="usernameInput" type="text" placeholder="Username">
 
-      <input id="roomInput" type="text" placeholder="Room Name">
+              <div class="auth-buttons">
+                  <button id="loginBtn">Login</button>
+                  <button id="signupBtn">Sign Up</button>
+              </div>
 
-      <button id="joinBtn">Join Room</button>
-      <button id="logoutBtn">Logout</button>
+          </div>
 
-      <!-- OPEN ROOMS LIST (REQUIRED BY JS) -->
-      <div id="openRooms"></div>
+          <hr>
 
-    </div>
+          <div id="roomSection">
+
+              <input id="roomInput" type="text" placeholder="Room Name">
+              <div class="room-buttons">
+                <button class="roomBtn" id="joinBtn">Join Room</button>
+                <button class="roomBtn" id="logoutBtn">Logout</button>
+              </div>
+              <div id="openRooms"></div>
+
+          </div>
+
+      </div>
 
   </div>
 

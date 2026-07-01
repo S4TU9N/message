@@ -2,21 +2,108 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: #111;
   color: white;
   font-family: Arial, sans-serif;
   overflow: hidden;
 }
 
+html {
+  background: transparent;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("assets/images/saturn-background.jpg") center/cover no-repeat;
+  z-index: -1;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+}
+
+hr {
+    margin: 28px 0;
+
+    border: none;
+
+    border-top: 1px solid #2b2d34;
+}
+
+h1 {
+    margin-top: 0;
+
+    text-align: center;
+
+    font-size: 2.4rem;
+}
+
+.subtitle {
+    margin-bottom: 28px;
+
+    text-align: center;
+
+    color: #9ca0b5;
+}
+
 /* GLOBAL INPUTS */
-input,
 button {
-  padding: 10px;
-  margin: 5px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  box-sizing: border-box;
+    padding: 14px;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background: #6f63ff;
+
+    color: white;
+
+    cursor: pointer;
+
+    transition: .2s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+
+    background: #8178ff;
+}
+
+input {
+    width: 100%;
+    display: block;
+    box-sizing: border-box;
+    padding: 14px;
+
+    margin: 8px 0;
+
+    border-radius: 12px;
+
+    border: 1px solid #30333d;
+
+    background: #111319;
+
+    color: white;
+
+    outline: none;
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 12px;
+
+    margin-top: 14px;
+}
+
+.auth-buttons button {
+    flex: 1;
+}
+
+input:focus {
+    border-color: #7b6cff;
 }
 
 button {
@@ -28,29 +115,82 @@ button {
 /* -------------------- */
 
 #setup {
-  height: 100vh;
-  width: 100%;
-  padding: 20px;
-  box-sizing: border-box;
-  overflow-y: auto;
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 40px;
+} 
+
+.setup-card {
+    width: min(460px, 95vw);
+    padding-top: 32px;
+    padding: 28px;
+
+    border-radius: 22px;
+
+    background: rgba(22, 22, 30, 0.88);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    box-shadow:
+        0 20px 60px rgba(0,0,0,.45);
+    margin-bottom: 240px;
 }
 
 /* Auth + room sections should stack cleanly */
 #authSection,
 #roomSection {
+  align-items: center;
   display: flex;
   flex-direction: column;
-  max-width: 600px;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
 }
 
+#authSection input,
+#roomSection input {
+  width: 100%;
+  max-width: min(460px, 95vw);
+}
 /* open rooms list */
 #openRooms {
   margin-top: 10px;
   display: flex;
   flex-direction: column;
+  flex-wrap: nowrap;
   gap: 6px;
+  overflow-x: auto;
 }
 
+.oroomBtn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.room-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  width: 100%;
+}
+
+.roomBtn {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+#logoutBtn {
+  background: #ff4a4a;
+  width: 25%;
+}
+.roomBtn button {
+  flex: 1;
+}
 /* -------------------- */
 /* CHAT SCREEN */
 /* -------------------- */
@@ -62,15 +202,16 @@ button {
 #chat {
   position: fixed;
   inset: 0;
+  background: rgba(0,0,0,.5)
 }
 
 #messages {
   position: absolute;
   top: 0;
-  bottom: 70px; /* adjust to input height */
+  bottom: 0px; /* adjust to input height */
   left: 0;
   right: 0;
-
+  background: transparent;
   overflow-y: auto;
   padding: 10px;
 }
@@ -83,15 +224,24 @@ button {
 
   display: flex;
   gap: 8px;
-  padding: 10px;
-  background: #222;
-  border-top: 1px solid #333;
+  padding: 6px;
+
+  background: rgb(0, 0, 30);
+  border-radius: 18px 18px 18px 18px;
+
+  align-items: center;
+
+  box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.25);
+
+  overflow: hidden;
+  transform: translateZ(0);
+  will-change: transform;
 }
 /* message input grows */
 #messageInput {
   flex: 1;
   padding: 12px;
-  background: #333;
+  background: rgb(0, 0, 20);
   color: white;
   outline: none;
   border-radius: 8px;
@@ -103,6 +253,7 @@ button {
   background: #4a6cff;
   color: white;
   border-radius: 8px;
+  height: 100%
 }
 
 /* -------------------- */

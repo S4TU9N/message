@@ -51,23 +51,23 @@ function setStatus(msg, color = "black") {
 /* ELEMENTS */
 /* -------------------- */
 
-const setupDiv = document.getElementById("setup");
-const chatDiv = document.getElementById("chat");
+  const setupDiv = document.getElementById("setup");
+  const chatDiv = document.getElementById("chat");
 
-const roomInput = document.getElementById("roomInput");
-const emailInput = document.getElementById("emailInput");
-const passwordInput = document.getElementById("passwordInput");
-const usernameInput = document.getElementById("usernameInput");
+  const roomInput = document.getElementById("roomInput");
+  const emailInput = document.getElementById("emailInput");
+  const passwordInput = document.getElementById("passwordInput");
+  const usernameInput = document.getElementById("usernameInput");
 
-const joinBtn = document.getElementById("joinBtn");
-const signupBtn = document.getElementById("signupBtn");
-const loginBtn = document.getElementById("loginBtn");
+  const joinBtn = document.getElementById("joinBtn");
+  const signupBtn = document.getElementById("signupBtn");
+  const loginBtn = document.getElementById("loginBtn");
 
-const messagesDiv = document.getElementById("messages");
-const messageInput = document.getElementById("messageInput");
-const sendBtn = document.getElementById("sendBtn");
+  const messagesDiv = document.getElementById("messages");
+  const messageInput = document.getElementById("messageInput");
+  const sendBtn = document.getElementById("sendBtn");
 
-const messageSound = new Audio("ping.mp3");
+  const messageSound = new Audio("ping.mp3");
 
 /* -------------------- */
 /* AUTH STATE */
@@ -284,7 +284,7 @@ async function loadOpenRooms() {
     const minutesAgo = Math.floor(
       (Date.now() - lastActive.getTime()) / 60000
     );
-
+    btn.className = 'oroomBtn';
     btn.textContent =
       `Room Name: ${roomRow.name} | Last Active: ${formattedTime}(${minutesAgo}m ago)`;
 
